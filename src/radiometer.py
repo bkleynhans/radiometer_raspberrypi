@@ -14,11 +14,11 @@
 ###
 
 # Imports
+from datetime import datetime, timezone
+
 import json
 import os
 import pdb
-
-from tools.load_file import Load_File
 
 class Radiometer:
 
@@ -26,17 +26,23 @@ class Radiometer:
 
         self.args = args
         
+        # Is this the first time the script is running after power cycle
+        self.initial_startup = True
+        
+        # Has the clock been set since startup
+        self.clock_set = False
+        
+        # Should data be uploaded
+        self.upload_data = False
+        
         # Create a dictionary that will contain all the preferences loaded from the config file        
-        args['preferences'] = {}
+        self.args['preferences'] = {}
 
         # Build the path to the configuration file
-        source_file = os.path.join(args['project_root'], 'etc', 'radiometer.cfg')
-        
-        # Create an instance of a file loader/reader object
-        loader = Load_File()
+        cfg_file = os.path.join(args['project_root'], 'etc', 'radiometer.json')
         
         # Read the contents of the file into the global preferences file
-        self.args['preferences'] = loader.load(source_file)
+        self.load_file(cfg_file)
         
         while True:
             self.program_loop()
@@ -44,7 +50,63 @@ class Radiometer:
     
     def program_loop(self):
         
-        pass
+        # Check if this is the initial boot of the device, and set some values
+        if self.initial_startup:
+            self.startup_procedure()
+        
+        
+        
+    
+    def startup_procedure(self):
+        
+        # Turn on modem and connect to internet
+        
+        # If we need to upload a data file, upload it
+        if self.upload_data:
+            pass
+            
+        # Update the current day from the internet
+        self.set_clock()
+        
+        # Set the filename for the new data file
+        
+        # Write the headings to the new data file
+        
+        self.initial_startup = False
+        
+        # Disconnect from internet and turn off modem
+    
+    
+    def set_clock(self):
+        
+        datetime_now = datetime.now(timezone.utc)
+        
+        self.args['date'] = {
+            'today_local' : datetime.now(),
+            'today_utc' : datetime.now(timezone.utc)
+        }
+        
+        print(self.args)
+        
+    
+    def load_file(self, cfg_file):
+        
+        try:
+            with open(cfg_file) as json_file:
+                self.args['preferences'] = json.load(json_file)
+                self.args['preferences']['status'] = "success"
+        except IOError: 
+            print("The preferences file, radiometer.cfg, could not be found.")
+            self.args['cfg']['status'] = "failed"
+        
+    
+    def save_to_file(self, path, filename, data_string):
+        
+        save_location = os.path.join(path, filename)
+
+        filehandle = open(save_location, 'a+')
+        filehandle.writelines(data_string)
+        filehandle.close()
 
 
 # Main entry to the GUI program
