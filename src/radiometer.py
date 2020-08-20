@@ -13,12 +13,16 @@
 #
 ###
 
-# Imports
+# System immports
 from datetime import datetime, timezone
 
 import json
 import os
 import pdb
+import time
+
+# Project imports
+from src.sim7600 import Sim7600
 
 class Radiometer:
 
@@ -44,8 +48,15 @@ class Radiometer:
         # Read the contents of the file into the global preferences file
         self.load_file(cfg_file)
         
-        while True:
-            self.program_loop()
+        # Create instances of required class objects
+        self.sim7600 = Sim7600(
+                            self.args['preferences']['modem'],
+                            self.args['preferences']['provider']
+                        )
+        
+        # ~ while True:
+            # ~ self.program_loop()
+        self.program_loop()
         
     
     def program_loop(self):
@@ -59,7 +70,18 @@ class Radiometer:
     
     def startup_procedure(self):
         
-        # Turn on modem and connect to internet
+        # If the radio is off        
+        if self.sim7600.status == 'low-power' or self.sim7600.status == None:
+            while self.sim7600.status != "online":
+                # Turn on the radio
+                self.sim7600.radio_on()
+                
+                time.sleep(10)
+                
+            print(self.sim7600.signal_strength)
+            print(self.sim7600.home_network)
+            
+        self.sim7600.connect()
         
         # If we need to upload a data file, upload it
         if self.upload_data:
@@ -75,9 +97,13 @@ class Radiometer:
         self.initial_startup = False
         
         # Disconnect from internet and turn off modem
+        self.sim7600.radio_off()
     
     
     def set_clock(self):
+        
+        stream = os.popen('timedatectl')
+        print(stream.read())
         
         datetime_now = datetime.now(timezone.utc)
         
@@ -86,7 +112,7 @@ class Radiometer:
             'today_utc' : datetime.now(timezone.utc)
         }
         
-        print(self.args)
+        print("Current Date : ", self.args['date']['today_utc'])
         
     
     def load_file(self, cfg_file):
