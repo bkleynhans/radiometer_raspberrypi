@@ -16,13 +16,15 @@
 # System immports
 from datetime import datetime, timezone
 
-import json
 import os
-import pdb
+import json
 import time
+import pdb
+import subprocess
 
 # Project imports
 from src.sim7600 import Sim7600
+from src.filemanager import Filemanager
 
 class Radiometer:
 
@@ -39,14 +41,14 @@ class Radiometer:
         # Should data be uploaded
         self.upload_data = False
         
-        # Create a dictionary that will contain all the preferences loaded from the config file        
-        self.args['preferences'] = {}
+        # Create instance of filemanager class which does all file related actions
+        self.filemanager = Filemanager(args)
 
         # Build the path to the configuration file
         cfg_file = os.path.join(args['project_root'], 'etc', 'radiometer.json')
         
         # Read the contents of the file into the global preferences file
-        self.load_file(cfg_file)
+        self.args['preferences'] = self.filemanager.load_file(cfg_file)
         
         # Create instances of required class objects
         self.sim7600 = Sim7600(
@@ -79,8 +81,10 @@ class Radiometer:
         self.set_clock()
         
         # Set the filename for the new data file
+        self.build_filename()
         
         # Write the headings to the new data file
+        self.build_heading()
         
         self.initial_startup = False
         
@@ -102,25 +106,61 @@ class Radiometer:
         
         print("Current Date : ", self.args['date']['today_utc'])
         
+        
+    def build_filename(self):
+        
+        print("    --- Building Filename ---")
+        
+        # Clean the filename variable
+        self.args['filename'] = None
+        
+        # Set the new filename
+        self.args['filename'] = self.args['preferences']['siteName']
+        self.args['filename'] += "_"
+        self.args['filename'] += str(datetime.now(timezone.utc).strftime('%y'))
+        self.args['filename'] += str(datetime.now(timezone.utc).strftime('%m'))
+        self.args['filename'] += str(datetime.now(timezone.utc).strftime('%d'))
+        
     
-    def load_file(self, cfg_file):
+    def build_heading(self):
         
-        try:
-            with open(cfg_file) as json_file:
-                self.args['preferences'] = json.load(json_file)
-                self.args['preferences']['status'] = "success"
-        except IOError: 
-            print("The preferences file, radiometer.cfg, could not be found.")
-            self.args['cfg']['status'] = "failed"
+        print("    --- Building Heading ---")
+        
+        self.write_title_string()
+        self.write_heading_string()
+        
+        
+    def write_title_string(self):
+        
+        print("    --- Building Title String ---")
+        
+        # Clean the current title string
+        self.args['titleString'] = None
+        
+        # Create the new title string
+        self.args['titleString'] = "Site Name : {}\n".format(self.args['preferences']['siteName'])
+        
+        # Write the title to the file
+        self.filemanager.save_to_file(
+            self.args['preferences']['toUploadPath'], 
+            self.args['filename'], 
+            self.args['titleString']
+        )
         
     
-    def save_to_file(self, path, filename, data_string):
+    def write_heading_string(self):
         
-        save_location = os.path.join(path, filename)
-
-        filehandle = open(save_location, 'a+')
-        filehandle.writelines(data_string)
-        filehandle.close()
+        print("    --- Building Heading String ---")
+        
+        # Clean the current title string
+        self.args['headingString'] = None
+        
+        # Write the title to the file
+        self.filemanager.save_to_file(
+            self.args['preferences']['toUploadPath'], 
+            self.args['filename'],
+            self.args['preferences']['headingString']
+        )
 
 
 # Main entry to the GUI program
