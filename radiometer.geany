@@ -20,6 +20,7 @@ indent_mode=2
 [project]
 name=radiometer
 base_path=/run/user/1000/gvfs/sftp:host=10.0.1.163,user=pi/home/pi/projects/radiometer_raspberrypi
+description=
 
 [long line marker]
 long_line_behaviour=1
@@ -27,6 +28,7 @@ long_line_column=72
 
 [files]
 current_page=0
+FILE_NAME_0=307;Python;0;EUTF-8;0;1;0;Z%3A%5Cradiometer_raspberrypi%5Clauncher.py;0;4
 
 [VTE]
 last_dir=/home/bkleynhans
