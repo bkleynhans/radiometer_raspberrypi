@@ -1,16 +1,42 @@
 {
-    "sitename": "Henrietta1",
-    "sitecode": "H1",
-    "header": "ch1,ch2,tp1,ch3,ch4,tp2,ch5,ch6,ch7,ch8,tp3,Year,Month,Day,Hour,Minutes,Seconds",
+    "siteName": "Henrietta1",
+    "siteCode": "H1",
+    "headingString": "ch1,ch2,tp1,ch3,ch4,tp2,ch5,ch6,ch7,ch8,tp3,Year,Month,Day,Hour,Minutes,Seconds",
+    "toUploadPath": "/mnt/storage/toUpload",
+    "uploadedPath": "/mnt/storage/uploaded",
     "radio": "/dev/cdc-wdm0",
+    "host": {
+        "protocol": {
+            "ssh": {
+                "servers": [
+                    "tornado.cis.rit.edu",
+                    "aldrin.cis.rit.edu",
+                    "conrad.cis.rit.edu",
+                    "collins.cis.rit.edu"
+                ],
+                "port": "22",
+                "username": "ritlandsat",
+                "password": "!R1tL@nd5@T*",
+                "destination": "~/",
+            },
+            "ftp": {
+                "servers": [
+                    "tornado.cis.rit.edu",
+                    "aldrin.cis.rit.edu",
+                    "conrad.cis.rit.edu",
+                    "collins.cis.rit.edu"
+                ],
+                "port": "21"
+                "username": "anonymous",
+                "password": "ritlandsat@rit.edu",
+                "destination": ""
+            },
+        },
+    },
     "provider": {
 		"name": "hologram",
 		"apn": "hologram",
 		"username": "",
 		"password": ""
-	},
-    "sim7600": {
-    },
-    "piplates": {
-    }
+	}
 }
