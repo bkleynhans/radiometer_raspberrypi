@@ -63,6 +63,13 @@ class Sim7600():
         
         print("turn_gsm_radio_on")
 
+        # If the sim7600 module is still online, we need to place it offline before continuing
+        if self.get_gsm_radio_status() == 'online':
+            print("GSM Radio Status : Online        --> Resetting...")
+            self.reset_gsm_radio()
+            
+        time.sleep(30)
+
         # If the sim7600 module is in offline mode, it needs to be reset before it can be
         # made online
         if self.get_gsm_radio_status() == 'offline':
@@ -92,8 +99,6 @@ class Sim7600():
         os.popen(command_string)        
 
         time.sleep(5)
-
-        pdb.set_trace()
 
         # Change protocol to RAW
         filepath = os.path.join('/sys/class/net', self.defined['wwanInterface'], 'qmi/raw_ip')
