@@ -2,7 +2,7 @@
     "sitename": "Henrietta1",
     "sitecode": "H1",
     "header": "ch1,ch2,tp1,ch3,ch4,tp2,ch5,ch6,ch7,ch8,tp3,Year,Month,Day,Hour,Minutes,Seconds",
-    "modem": "/dev/cdc-wdm0",
+    "radio": "/dev/cdc-wdm0",
     "provider": {
 		"name": "hologram",
 		"apn": "hologram",
