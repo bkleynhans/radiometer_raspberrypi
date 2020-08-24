@@ -50,7 +50,7 @@ class Radiometer:
         
         # Create instances of required class objects
         self.sim7600 = Sim7600(
-                            self.args['preferences']['modem'],
+                            self.args['preferences']['radio'],
                             self.args['preferences']['provider']
                         )
         
@@ -65,22 +65,10 @@ class Radiometer:
         if self.initial_startup:
             self.startup_procedure()
         
-        
-        
     
     def startup_procedure(self):
         
         # If the radio is off        
-        if self.sim7600.status == 'low-power' or self.sim7600.status == None:
-            while self.sim7600.status != "online":
-                # Turn on the radio
-                self.sim7600.radio_on()
-                
-                time.sleep(10)
-                
-            print(self.sim7600.signal_strength)
-            print(self.sim7600.home_network)
-            
         self.sim7600.connect()
         
         # If we need to upload a data file, upload it
@@ -97,7 +85,7 @@ class Radiometer:
         self.initial_startup = False
         
         # Disconnect from internet and turn off modem
-        self.sim7600.radio_off()
+        self.sim7600.disconnect()
     
     
     def set_clock(self):
