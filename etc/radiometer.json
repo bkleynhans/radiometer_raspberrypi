@@ -5,33 +5,30 @@
     "toUploadPath": "/mnt/storage/toUpload",
     "uploadedPath": "/mnt/storage/uploaded",
     "radio": "/dev/cdc-wdm0",
-    "host": {
-        "protocol": {
-            "ssh": {
-                "servers": [
-                    "tornado.cis.rit.edu",
-                    "aldrin.cis.rit.edu",
-                    "conrad.cis.rit.edu",
-                    "collins.cis.rit.edu"
-                ],
-                "port": "22",
-                "username": "ritlandsat",
-                "password": "!R1tL@nd5@T*",
-                "destination": "~/",
-            },
-            "ftp": {
-                "servers": [
-                    "tornado.cis.rit.edu",
-                    "aldrin.cis.rit.edu",
-                    "conrad.cis.rit.edu",
-                    "collins.cis.rit.edu"
-                ],
-                "port": "21"
-                "username": "anonymous",
-                "password": "ritlandsat@rit.edu",
-                "destination": ""
-            },
+    "sourcePath": "/mnt/storage/toUpload",
+    "protocol": {
+        "ssh": {
+            "servers": [
+                "tornado.cis.rit.edu",
+                "aldrin.cis.rit.edu",
+                "conrad.cis.rit.edu",
+                "collins.cis.rit.edu"
+            ],
+            "username": "ritlandsat",
+            "password": "!R1tL@nd5@T*",
+            "destinationPath": "/dirs/data/tirs/rit-radiometer/data"
         },
+        "ftp": {
+            "servers": [
+                "tornado.cis.rit.edu",
+                "aldrin.cis.rit.edu",
+                "conrad.cis.rit.edu",
+                "collins.cis.rit.edu"
+            ],
+            "username": "anonymous",
+            "password": "ritlandsat@rit.edu",
+            "destination": ""
+        }
     },
     "provider": {
 		"name": "hologram",
