@@ -18,6 +18,9 @@ import os, subprocess
 import time
 import pdb
 
+# Raspberry Pi Specific imports
+import RPi.GPIO as GPIO
+
 class Sim7600():
     # Constructor
     def __init__(self, radio, provider):
@@ -112,7 +115,7 @@ class Sim7600():
         command_string = 'sudo ip link set ' + self.defined['wwanInterface'] + ' up'
         
         print(command_string)
-        os.popen(command_string)        
+        os.popen(command_string)
         
     
     def connect_wwan_network(self):

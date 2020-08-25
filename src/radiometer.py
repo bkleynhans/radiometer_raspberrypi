@@ -16,7 +16,7 @@
 # System imports
 from datetime import datetime, timezone
 
-import os
+import os, sys
 import json
 import time
 import pdb
@@ -61,7 +61,7 @@ class Radiometer:
                             self.args['preferences']['radio'],
                             self.args['preferences']['provider']
                         )
-        
+                        
         while True:
             self.program_loop()
         
@@ -77,16 +77,16 @@ class Radiometer:
             
         self.current_time = time.time()
         
-        pdb.set_trace()
+        elapsed_time = self.current_time - self.previous_time
         
-        if (self.current_time - self.previous_time) >= 1:
+        if elapsed_time >= 1:
             self.sample_data()
             self.previous_time = self.current_time
         
     
     def startup_procedure(self):
         
-        print("     --- Running startup configuration ---")
+        print("     --- Running startup configuration ---\n", end = '')
         
         # If the radio is off        
         self.sim7600.connect()
@@ -94,7 +94,7 @@ class Radiometer:
         # If we need to upload a data file, upload it
         if self.upload_data:
             self.upload_to_server()
-            self.update_data = False
+            self.upload_data = False
             
         # Update the current day from the internet
         self.set_clock()
@@ -113,7 +113,7 @@ class Radiometer:
 
     def new_day_procedure(self):
         
-        print("     --- Day has changed, updating configuration and creating new file ---")
+        print("     --- Day has changed, updating configuration and creating new file ---\n", end = '')
         
         # Update the current Day
         self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
@@ -131,20 +131,16 @@ class Radiometer:
         data_string = ""
                 
         for i in range(8):
-            data_string += str(DAQC2.getADC(0,i))
-            data_string += ","
+            data_string += "{:.5f},".format(DAQC2.getADC(0,i))
         
-        data_string += str(datetime.now(timezone.utc).strftime('%Y'))
-        data_string += ","
-        data_string += str(datetime.now(timezone.utc).strftime('%m'))
-        data_string += ","
-        data_string += str(datetime.now(timezone.utc).strftime('%d'))
-        data_string += ","
-        data_string += str(datetime.now(timezone.utc).strftime('%H'))
-        data_string += ","
-        data_string += str(datetime.now(timezone.utc).strftime('%M'))
-        data_string += ","
-        data_string += str(datetime.now(timezone.utc).strftime('%S'))
+        data_string += "{},".format(datetime.now(timezone.utc).strftime('%Y'))
+        data_string += "{},".format(datetime.now(timezone.utc).strftime('%m'))
+        data_string += "{},".format(datetime.now(timezone.utc).strftime('%d'))
+        data_string += "{},".format(datetime.now(timezone.utc).strftime('%H'))
+        data_string += "{},".format(datetime.now(timezone.utc).strftime('%M'))
+        data_string += "{}\n".format(datetime.now(timezone.utc).strftime('%S'))
+        
+        print(data_string, end = '')
         
         self.filemanager.save_to_file(
                             self.args['preferences']['toUploadPath'], 
@@ -167,18 +163,32 @@ class Radiometer:
                                 )
                                 
             full_destination_path = os.path.join(
-                                    self.args['preferences']['protocol']['ssh']['destinationPath'],
+                                    self.args['preferences']['protocol']['ssh']['remoteDestinationPath'],
                                     self.args['preferences']['siteName'],
                                     source_file[:4],
                                     source_file[4:6],
                                     source_file
                                 )
-
+            print("     --- Uploading DATA to server ---\n", end = '')
+            
             try:
                 self.filemanager.upload_to_server(full_source_path, full_destination_path)
-                self.filemanager.move-to_uploaded()
-            except:
-                continue
+                
+            except:                
+                e = sys.exc_info()[0]
+                
+                print("\n   !!! An Exception Occurred During Remote Transfer !!!")
+                print("{}".format(e))
+            
+            print("     --- Moving old file ---\n", end = '')
+                
+            try:
+                self.filemanager.move_to_uploaded(full_source_path, self.args['preferences']['localDestinationPath'])
+            except:                
+                e = sys.exc_info()[0]
+                
+                print("\n   !!! An Exception Occurred During Local File Move !!!")
+                print("{}".format(e))
     
     
     def set_clock(self):
@@ -193,12 +203,12 @@ class Radiometer:
             'today_utc' : datetime.now(timezone.utc)
         }
         
-        print("Current Date : ", self.args['date']['today_utc'])
+        print("Current Date : ", self.args['date']['today_utc'], end = '')
         
         
     def build_filename(self):
         
-        print("    --- Building Filename ---")
+        print("    --- Building Filename ---\n", end = '')
         
         # Set the new filename
         self.args['filename'] = str(datetime.now(timezone.utc).strftime('%Y'))
@@ -209,7 +219,7 @@ class Radiometer:
     
     def build_heading(self):
         
-        print("    --- Building Heading ---")
+        print("    --- Building Heading ---", end = '')
         
         self.write_title_string()
         self.write_heading_string()
@@ -217,13 +227,13 @@ class Radiometer:
         
     def write_title_string(self):
         
-        print("    --- Building Title String ---")
-        
         # Clean the current title string
         self.args['titleString'] = None
         
         # Create the new title string
         self.args['titleString'] = "Site Name : {}\n".format(self.args['preferences']['siteName'])
+        
+        print(self.args['titleString'], end = '')
         
         # Write the title to the file
         self.filemanager.save_to_file(
@@ -235,10 +245,7 @@ class Radiometer:
     
     def write_heading_string(self):
         
-        print("    --- Building Heading String ---")
-        
-        # Clean the current title string
-        self.args['headingString'] = None
+        print(self.args['preferences']['headingString'], end = '')
         
         # Write the title to the file
         self.filemanager.save_to_file(

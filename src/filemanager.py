@@ -80,7 +80,7 @@ class Filemanager():
         month = filename[4:6]
         
         # Construct the path to get a directory listing for existing sites
-        path_to_sites = self.preferences['protocol']['ssh']['destinationPath']
+        path_to_sites = self.preferences['protocol']['ssh']['remoteDestinationPath']
         sites = self.get_remote_contents(path_to_sites)
         path_to_years = os.path.join(path_to_sites, site_name)
         
@@ -127,9 +127,14 @@ class Filemanager():
         
         sftp_client = self.ssh_client.open_sftp()
         sftp_client.put(full_source_path, full_destination_path)
-        sftp_Client.close()
+        sftp_client.close()
 
 
-    def move_to_uploaded(self, full_source_path):
+    def move_to_uploaded(self, full_source_path, local_destination_path):
         
-        pdb.set_trace()
+        command_string = "sudo mv "
+        command_string += full_source_path
+        command_string += " "
+        command_string += local_destination_path
+                
+        os.popen(command_string)
