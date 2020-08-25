@@ -13,7 +13,7 @@
 #
 ###
 
-# System immports
+# System imports
 from datetime import datetime, timezone
 
 import os
@@ -21,6 +21,8 @@ import json
 import time
 import pdb
 import subprocess
+
+import piplates.DAQC2plate as DAQC2
 
 # Project imports
 from src.sim7600 import Sim7600
@@ -35,11 +37,12 @@ class Radiometer:
         # Is this the first time the script is running after power cycle
         self.initial_startup = True
         
-        # Has the clock been set since startup
-        self.clock_set = False
-        
         # Should data be uploaded
         self.upload_data = False
+        
+        # Save the current time
+        self.current_time = time.time()
+        self.previous_time = self.current_time
         
         # Save today's date to check for 24-hour intervals
         self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
@@ -65,19 +68,25 @@ class Radiometer:
     
     def program_loop(self):
         
-        if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
-            self.upload_data = True
-            self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
-        
         # Check if this is the initial boot of the device, and set some values
         if self.initial_startup:
             self.startup_procedure()
+        
+        if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
+            self.new_day_procedure()
             
-        self.initial_startup = True
-        self.upload_data = True
+        self.current_time = time.time()
+        
+        pdb.set_trace()
+        
+        if (self.current_time - self.previous_time) >= 1:
+            self.sample_data()
+            self.previous_time = self.current_time
         
     
     def startup_procedure(self):
+        
+        print("     --- Running startup configuration ---")
         
         # If the radio is off        
         self.sim7600.connect()
@@ -102,6 +111,47 @@ class Radiometer:
         self.sim7600.disconnect()
 
 
+    def new_day_procedure(self):
+        
+        print("     --- Day has changed, updating configuration and creating new file ---")
+        
+        # Update the current Day
+        self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
+        
+        # Upload data files to online storage
+        self.upload_data = True
+        
+        # Set initial startup to ture, which will force a re-sync of the clock and create a new
+        # file for the new day
+        self.initial_startup = True
+    
+    
+    def sample_data(self):
+        
+        data_string = ""
+                
+        for i in range(8):
+            data_string += str(DAQC2.getADC(0,i))
+            data_string += ","
+        
+        data_string += str(datetime.now(timezone.utc).strftime('%Y'))
+        data_string += ","
+        data_string += str(datetime.now(timezone.utc).strftime('%m'))
+        data_string += ","
+        data_string += str(datetime.now(timezone.utc).strftime('%d'))
+        data_string += ","
+        data_string += str(datetime.now(timezone.utc).strftime('%H'))
+        data_string += ","
+        data_string += str(datetime.now(timezone.utc).strftime('%M'))
+        data_string += ","
+        data_string += str(datetime.now(timezone.utc).strftime('%S'))
+        
+        self.filemanager.save_to_file(
+                            self.args['preferences']['toUploadPath'], 
+                            self.args['filename'], 
+                            data_string
+                        )
+    
     def upload_to_server(self):
         
         self.filemanager.connect_sftp()
