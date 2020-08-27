@@ -140,13 +140,9 @@ class Sim7600():
         stream = os.popen(command_string)
         print(stream.read())
 
-        command_string = 'sudo udhcpc -i ' + self.defined['wwanInterface']
+        temp_data = self.get_ip_address()
+        temp_data += self.update_routing_table()        
 
-        stream = os.popen(command_string)
-        temp_data = stream.read()
-        
-        temp_data += self.get_ip_address()
-        
         return temp_data
 
 
@@ -160,6 +156,23 @@ class Sim7600():
         return stream.read()
         
     
+    def update_routing_table(self):
+
+        print("update_routing_table")
+
+        command_string = "sudo ip a s " + self.defined['wwanInterface']
+        stream = os.popen(command_string)
+
+        temp_string = stream.read()
+
+        command_string = "sudo ip r s"
+        stream = os.popen(command_string)
+
+        temp_string += stream.read()
+
+        return temp_string
+    
+
     def reset_gsm_radio(self):
         
         print("reset_gsm_radio")
