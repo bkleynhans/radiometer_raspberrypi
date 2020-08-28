@@ -284,7 +284,7 @@ class Radiometer:
         coordinate_string += 'Longitude : {}{}'.format(self.args['coordinates']['longitude']['degrees'], DEGREE_SIGN)
         coordinate_string += '{}\''.format(self.args['coordinates']['longitude']['minutes'])
         coordinate_string += '{}"'.format(self.args['coordinates']['longitude']['seconds'])
-        coordinate_string += '{}'.format(self.args['coordinates']['longitude']['direction'])
+        coordinate_string += '{}\n'.format(self.args['coordinates']['longitude']['direction'])
         
         # Write the coordinates of the radiometer
         self.filemanager.save_to_file(
