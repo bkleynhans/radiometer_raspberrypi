@@ -26,7 +26,10 @@ import piplates.DAQC2plate as DAQC2
 
 # Project imports
 from src.sim7600 import Sim7600
+# ~ from src.sim7600_gps import Sim7600_Gps
 from src.filemanager import Filemanager
+
+DEGREE_SIGN = u'\N{DEGREE SIGN}'
 
 class Radiometer:
 
@@ -49,18 +52,35 @@ class Radiometer:
         
         # Create instance of filemanager class which does all file related actions
         self.filemanager = Filemanager(args)
-
+        
         # Build the path to the configuration file
         cfg_file = os.path.join(args['project_root'], 'etc', 'radiometer.json')
         
         # Read the contents of the file into the global preferences file
         self.args['preferences'] = self.filemanager.load_file(cfg_file)
         
-        # Create instances of required class objects
-        self.sim7600 = Sim7600(
-                            self.args['preferences']['radio'],
-                            self.args['preferences']['provider']
-                        )
+        # Create instances of base SIM7600X module
+        self.sim7600 = Sim7600(self.args)
+        
+        # Turn SIM7600 module on
+        self.sim7600.power_on()
+        
+        # Get GPS Coordinates
+        self.args['coordinates'] = self.sim7600.get_position()
+
+        # ~ # The GPS sequence only runs when the device is switched on for the first
+        # ~ # time, hence it was placed in the radiometer constructor
+        # ~ # Create instance of GPS interface for SIM7600X
+        # ~ self.gps = Sim7600_Gps()
+        
+        # ~ # Power on the GPS module
+        # ~ self.gps.power_on()
+        
+        # ~ # Get the current GPS coordinates
+        # ~ self.args['coordinates'] = self.gps.get_position()
+        
+        # ~ # Power off the GPS module
+        # ~ self.gps.power_off()
                         
         while True:
             self.program_loop()
@@ -88,9 +108,13 @@ class Radiometer:
         
         print("     --- Running startup configuration ---\n", end = '')
         
-        # If the radio is off        
+        # Turn the sim7600 module on if it is offline
+        if self.sim7600.power_status == "offline":
+            self.sim7600.power_on()
+            
+        # Connect to the internet
         self.sim7600.connect()
-        
+
         # If we need to upload a data file, upload it
         if self.upload_data:
             self.upload_to_server()
@@ -107,8 +131,11 @@ class Radiometer:
         
         self.initial_startup = False
         
-        # Disconnect from internet and turn off modem
+        # Disconnect from internet
         self.sim7600.disconnect()
+        
+        # Power off Sim7600
+        self.sim7600.power_off()
 
 
     def new_day_procedure(self):
@@ -222,6 +249,7 @@ class Radiometer:
         print("    --- Building Heading ---", end = '')
         
         self.write_title_string()
+        self.write_coordinate_string()
         self.write_heading_string()
         
         
@@ -242,7 +270,30 @@ class Radiometer:
             self.args['titleString']
         )
         
-    
+        
+    def write_coordinate_string(self):
+        
+        # Build the coordinate string_at
+        coordinate_string = 'Latitude : {}{}'.format(self.args['coordinates']['latitude']['degrees'], DEGREE_SIGN)
+        coordinate_string += '{}\''.format(self.args['coordinates']['latitude']['minutes'])
+        coordinate_string += '{}"'.format(self.args['coordinates']['latitude']['seconds'])
+        coordinate_string += '{}'.format(self.args['coordinates']['latitude']['direction'])
+        
+        coordinate_string += '      '
+        
+        coordinate_string += 'Longitude : {}{}'.format(self.args['coordinates']['longitude']['degrees'], DEGREE_SIGN)
+        coordinate_string += '{}\''.format(self.args['coordinates']['longitude']['minutes'])
+        coordinate_string += '{}"'.format(self.args['coordinates']['longitude']['seconds'])
+        coordinate_string += '{}'.format(self.args['coordinates']['longitude']['direction'])
+        
+        # Write the coordinates of the radiometer
+        self.filemanager.save_to_file(
+            self.args['preferences']['toUploadPath'], 
+            self.args['filename'], 
+            coordinate_string
+        )
+        
+    pdb
     def write_heading_string(self):
         
         print(self.args['preferences']['headingString'], end = '')

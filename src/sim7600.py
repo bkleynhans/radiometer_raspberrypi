@@ -20,14 +20,18 @@ import pdb
 
 # Raspberry Pi Specific imports
 import RPi.GPIO as GPIO
+import serial
 
 class Sim7600():
     # Constructor
-    def __init__(self, radio, provider):
+    def __init__(self, args): #radio, provider, power_key = 6):
         
-        self.defined = {
-            'gsmProvider'           : provider,
-            'gsmRadio'              : radio,
+        self.defined = {            
+            'gsmProvider'           : args['preferences']['provider'],
+            'gsmRadio'              : args['preferences']['sim7600']['radio'],
+            'serial0'               : args['preferences']['sim7600']['serial0'],
+            'powerKey'              : args['preferences']['sim7600']['powerKey'],
+            'baudRate'              : args['preferences']['sim7600']['baudRate'],
             'gsmRadioCommand'       : "sudo qmicli -d ",            # Note the space AFTER the string            
             'setRadioMode'          : " --dms-set-operating-mode=", # Note the space BEFORE the string
             'getRadioMode'          : " --dms-get-operating-mode",  # Note the space BEFORE the string
@@ -43,7 +47,10 @@ class Sim7600():
             'offline'               : "offline"
         }
         
-        self.get_wwan_interface()
+        self.power_status = 'offline'
+        
+        self.serial0 = serial.Serial(self.defined['serial0'], self.defined['baudRate'])
+        self.serial0.flushInput()
         
         
     def connect(self):        
@@ -261,3 +268,147 @@ class Sim7600():
             returnValue =  True
 
         return returnValue
+        
+# PHYSICAL DEVICE MODULES
+    def power_on(self):
+        
+        try:
+            self._power_on()
+        except:
+            if self.serial0 != None:
+                self.serial0.close()
+                
+            self.power_off()
+            GPIO.cleanup()
+            
+            
+    def power_off(self):
+        
+        try:
+            self._power_off()
+        except:
+            if self.serial0 != None:
+                self.serial0.close()
+                
+            self._power_off()
+            GPIO.cleanup()
+            
+            
+    def _power_on(self):
+        print('Powering on SIM7600X')
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(self.defined['powerKey'], GPIO.OUT)
+        time.sleep(0.1)
+        GPIO.output(self.defined['powerKey'], GPIO.HIGH)
+        time.sleep(2)
+        GPIO.output(self.defined['powerKey'], GPIO.LOW)
+        time.sleep(20)
+        self.serial0.flushInput()
+        
+        self.power_status = "online"
+        
+        self.get_wwan_interface()
+        print('SIM7600X is ready')
+        
+        
+    def _power_off(self):
+        print('Powering down SIM7600X')
+        GPIO.output(self.defined['powerKey'], GPIO.HIGH)
+        time.sleep(3)
+        GPIO.output(self.defined['powerKey'], GPIO.LOW)
+        time.sleep(18)
+        self.power_status = "offline"
+        print('SIM7600 has been powered off')
+        
+            
+# GPS MODULES
+    def get_position(self):
+        
+        try:
+            return(self._get_position())
+        except:
+            if self.serial0 != None:
+                self.serial0.close()
+                
+            self.power_off()
+            GPIO.cleanup()
+        
+        
+    def _get_position(self):
+        receive_null = True
+        answer = 0
+        print('Starting GPS session...')
+        receive_buffer = ''
+        self._send_at_command('AT+CGPS=1,1', 'OK', 1)
+        time.sleep(2)
+        
+        while receive_null:
+            answer, receive_buffer = self._send_at_command('AT+CGPSINFO', '+CGPSINFO: ', 1)
+            
+            if answer == 1:
+                answer = 0
+                
+                # ~ if ',,,,,,' in receive_buffer:
+                    # ~ print('GPS is not ready')
+                    # ~ receive_null = False
+                    # ~ time.sleep(1)
+            else:
+                print('error %d' %answer)
+                receive_buffer = ''
+                self._send_at_command('AT+CGPS=0', 'OK', 1)
+                return False
+                
+            time.sleep(1.5)
+                        
+            if '+CGPSINFO' in receive_buffer and ',,,,,,,,' not in receive_buffer:                
+                gpgga_array = receive_buffer[receive_buffer.index(':') + 1:].split(',')
+                
+                self.coordinates = {
+                    'latitude': {
+                        'degrees': gpgga_array[0][:gpgga_array[0].find('.') - 2],
+                        'minutes': gpgga_array[0][3:gpgga_array[0].find('.')],
+                        'seconds': float(gpgga_array[0][gpgga_array[0].find('.'):]) * 60,
+                        'direction': gpgga_array[1]
+                    },
+                    'longitude': {
+                        'degrees': gpgga_array[2][:gpgga_array[2].find('.') - 2],
+                        'minutes': gpgga_array[2][3:gpgga_array[2].find('.')],
+                        'seconds': float(gpgga_array[2][gpgga_array[2].find('.'):]) * 60,
+                        'direction': gpgga_array[3]
+                    }
+                }
+        
+                return self.coordinates
+        
+        
+    def _send_at_command(self, command, return_value, timeout):
+        receive_buffer = ''
+        self.serial0.write((command+'\r\n').encode())
+        time.sleep(timeout)
+        
+        if self.serial0.inWaiting():
+            time.sleep(0.01)
+            receive_buffer = self.serial0.read(self.serial0.inWaiting())
+            
+        if receive_buffer != '':
+            if return_value not in receive_buffer.decode():
+                print(command + ' ERROR')
+                print(command + ' back:\t' + receive_buffer.decode())
+            else:
+                decoded_buffer = receive_buffer.decode()
+                print(decoded_buffer)
+                
+                if return_value == '+CGPSINFO: ':
+                    return 1, decoded_buffer
+                else:
+                    return 1
+        else:
+            print('GPS is not ready')
+            return 0
+        
+# Destructor
+    def __del__(self):
+        if self.serial0 != None:
+            self.serial0.close()
+            GPIO.cleanup()
