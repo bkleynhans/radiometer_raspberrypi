@@ -276,15 +276,15 @@ class Radiometer:
         # Build the coordinate string_at
         coordinate_string = 'Latitude : {}{}'.format(self.args['coordinates']['latitude']['degrees'], DEGREE_SIGN)
         coordinate_string += '{}\''.format(self.args['coordinates']['latitude']['minutes'])
-        coordinate_string += '{}"'.format(self.args['coordinates']['latitude']['seconds'])
-        coordinate_string += '{}'.format(self.args['coordinates']['latitude']['direction'])
+        coordinate_string += '{:.3f}"'.format(self.args['coordinates']['latitude']['seconds'])
+        coordinate_string += ' {}'.format(self.args['coordinates']['latitude']['direction'])
         
         coordinate_string += '      '
         
         coordinate_string += 'Longitude : {}{}'.format(self.args['coordinates']['longitude']['degrees'], DEGREE_SIGN)
         coordinate_string += '{}\''.format(self.args['coordinates']['longitude']['minutes'])
-        coordinate_string += '{}"'.format(self.args['coordinates']['longitude']['seconds'])
-        coordinate_string += '{}\n'.format(self.args['coordinates']['longitude']['direction'])
+        coordinate_string += '{:.3f}"'.format(self.args['coordinates']['longitude']['seconds'])
+        coordinate_string += ' {}\n'.format(self.args['coordinates']['longitude']['direction'])
         
         # Write the coordinates of the radiometer
         self.filemanager.save_to_file(
