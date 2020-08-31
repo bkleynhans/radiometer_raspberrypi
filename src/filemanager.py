@@ -138,3 +138,11 @@ class Filemanager():
         command_string += local_destination_path
                 
         os.popen(command_string)
+        
+        
+    def delete_file(self, full_file_path):
+        
+        command_string = "sudo rm "
+        command_string += full_file_path
+        
+        os.popen(command_string)

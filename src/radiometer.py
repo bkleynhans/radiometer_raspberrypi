@@ -21,6 +21,7 @@ import json
 import time
 import pdb
 import subprocess
+import zipfile
 
 import piplates.DAQC2plate as DAQC2
 
@@ -67,31 +68,20 @@ class Radiometer:
         
         # Get GPS Coordinates
         self.args['coordinates'] = self.sim7600.get_position()
-
-        # ~ # The GPS sequence only runs when the device is switched on for the first
-        # ~ # time, hence it was placed in the radiometer constructor
-        # ~ # Create instance of GPS interface for SIM7600X
-        # ~ self.gps = Sim7600_Gps()
         
-        # ~ # Power on the GPS module
-        # ~ self.gps.power_on()
-        
-        # ~ # Get the current GPS coordinates
-        # ~ self.args['coordinates'] = self.gps.get_position()
-        
-        # ~ # Power off the GPS module
-        # ~ self.gps.power_off()
-                        
+        # Run program loop
         while True:
             self.program_loop()
         
     
+    # The program loop runs continuously until Ctrl+C is pressed in the terminal
     def program_loop(self):
         
         # Check if this is the initial boot of the device, and set some values
         if self.initial_startup:
             self.startup_procedure()
         
+        # Check if the date has changed, and if it has, upload the file and create a new one
         if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
             self.new_day_procedure()
             
@@ -99,11 +89,13 @@ class Radiometer:
         
         elapsed_time = self.current_time - self.previous_time
         
+        # Check if 1 second has passed, then take another set of samples
         if elapsed_time >= 1:
             self.sample_data()
             self.previous_time = self.current_time
-        
-    
+
+
+    # The startup procedure runs on system boot, and every time the date changes
     def startup_procedure(self):
         
         print("     --- Running startup configuration ---\n", end = '')
@@ -138,6 +130,7 @@ class Radiometer:
         self.sim7600.power_off()
 
 
+    # The new day procedure runs every time the date changes
     def new_day_procedure(self):
         
         print("     --- Day has changed, updating configuration and creating new file ---\n", end = '')
@@ -180,25 +173,26 @@ class Radiometer:
         self.filemanager.connect_sftp()
         
         files_to_upload = self.filemanager.get_local_contents(self.args['preferences']['sourcePath'])
-        
+
         self.filemanager.build_structure(self.args['preferences']['siteName'], self.args['filename'])
         
-        for source_file in files_to_upload:            
-            full_source_path = os.path.join(
+        for csv_source_file in files_to_upload:
+            full_source_path = self.zip_file(
                                     self.args['preferences']['sourcePath'],
-                                    source_file
+                                    csv_source_file
                                 )
-                                
+
             full_destination_path = os.path.join(
                                     self.args['preferences']['protocol']['ssh']['remoteDestinationPath'],
                                     self.args['preferences']['siteName'],
-                                    source_file[:4],
-                                    source_file[4:6],
-                                    source_file
+                                    csv_source_file[:4],
+                                    csv_source_file[4:6],
+                                    full_source_path[full_source_path.rfind('/') + 1:]
                                 )
+                                
             print("     --- Uploading DATA to server ---\n", end = '')
             
-            try:
+            try:                
                 self.filemanager.upload_to_server(full_source_path, full_destination_path)
                 
             except:                
@@ -216,8 +210,30 @@ class Radiometer:
                 
                 print("\n   !!! An Exception Occurred During Local File Move !!!")
                 print("{}".format(e))
-    
-    
+
+
+    def zip_file(self, csv_source_path, filename):
+        
+        filename_no_extension = filename[:filename.find('.')]
+        zipped_filename = filename_no_extension + '.zip'
+        
+        full_zipped_path = os.path.join(csv_source_path, zipped_filename)
+        
+        zipped_file = zipfile.ZipFile(full_zipped_path, 'w')
+        zipped_file.write(
+            os.path.join(
+                csv_source_path,
+                filename
+            ),
+            compress_type = zipfile.ZIP_DEFLATED
+        )
+        zipped_file.close()
+        
+        self.filemanager.delete_file(os.path.join(csv_source_path, filename))
+        
+        return full_zipped_path
+
+
     def set_clock(self):
         
         stream = os.popen('timedatectl')
@@ -306,7 +322,7 @@ class Radiometer:
         )
 
 
-# Main entry to the GUI program
+# Main entry to the Radiometer program
 def main(args):
 
     Radiometer(args)
