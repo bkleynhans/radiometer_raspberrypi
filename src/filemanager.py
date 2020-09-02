@@ -130,7 +130,7 @@ class Filemanager():
         sftp_client.close()
 
 
-    def move_to_uploaded(self, full_source_path, local_destination_path):
+    def move_file(self, full_source_path, local_destination_path):
         
         command_string = "sudo mv "
         command_string += full_source_path
