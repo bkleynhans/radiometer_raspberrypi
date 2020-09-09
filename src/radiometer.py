@@ -8,7 +8,7 @@
 # Authors             : Benjamin Kleynhans
 #
 # Last Modified By    : Benjamin Kleynhans
-# Last Modified Date  : August 20, 2020
+# Last Modified Date  : September 9, 2020
 # Filename            : radiometer.py
 #
 ###
@@ -41,6 +41,9 @@ class Radiometer:
         # Is this the first time the script is running after power cycle
         self.initial_startup = True
         
+        # There will be a cron.log file which needs to be deleted IF the cron ran successfully
+        self.delete_cron_log = True
+        
         # Should data be uploaded
         self.upload_data = False
         
@@ -68,6 +71,9 @@ class Radiometer:
         
         # Get GPS Coordinates
         self.args['coordinates'] = self.sim7600.get_position()
+        
+        # Turn off Pi-Plates status LED
+        DAQC2.setLED(0,'off')
         
         # Run program loop
         while True:
@@ -129,6 +135,11 @@ class Radiometer:
         
         # Power off Sim7600
         self.sim7600.power_off()
+        
+        # Delete cron log after successful startup
+        if self.delete_cron_log:
+            self.delete_cron_log = False
+            self.filemanager.delete_file("/home/pi/cron.log")
 
 
     # The new day procedure runs every time the date changes
