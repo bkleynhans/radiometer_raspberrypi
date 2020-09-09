@@ -8,7 +8,7 @@
 # Authors             : Benjamin Kleynhans
 #
 # Last Modified By    : Benjamin Kleynhans
-# Last Modified Date  : August 19, 2020
+# Last Modified Date  : September 9, 2020
 # Filename            : sim7600.py
 #
 ###
@@ -89,7 +89,7 @@ class Sim7600():
         time.sleep(30)
 
         # Turn the GSM radio on        
-        stream = os.popen(self.build_command('setRadioMode', 'online'))        
+        stream = os.popen(self.build_command('setRadioMode', 'online'))
         radio_status = stream.read()
 
         if self.return_status(radio_status):
@@ -186,7 +186,7 @@ class Sim7600():
 
         time.sleep(10)
 
-        stream = os.popen(self.build_command('setRadioMode', 'reset'))        
+        stream = os.popen(self.build_command('setRadioMode', 'reset'))
         radio_status = stream.read()
         
         if self.return_status(radio_status):
@@ -238,8 +238,25 @@ class Sim7600():
         print("get_wwan_interface")
 
         # Get the wwan interface name
-        stream = os.popen(self.build_command('getWwanInterface'))        
+        stream = os.popen(self.build_command('getWwanInterface'))
         self.defined['wwanInterface'] =  stream.read().rstrip('\n')
+        
+        
+    def get_network_status(self):
+        
+        initial_status = None
+        
+        if self.power_status == 'offline':
+            self.turn_gsm_radio_on()
+            initial_status = 'offline'
+        else:
+            initial_status = 'online'
+            
+        self.get_gsm_signal_strength()
+        self.get_home_network()
+        
+        if initial_status == 'offline':
+            self.turn_gsm_radio_off()
     
     
     def build_command(self, cmd, status=None):
