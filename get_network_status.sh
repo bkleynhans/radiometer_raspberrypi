@@ -1,4 +1,20 @@
 #!/bin/bash
+###
+#
+# This script resets the GSM/xG modem and determines which
+# cellular network the device is connecting to.  It also provides
+# information pertaining to signal strength
+#
+# Program Description : 
+# Created By          : Benjamin Kleynhans
+# Creation Date       : September 9, 2020
+# Authors             : Benjamin Kleynhans
+#
+# Last Modified By    : Benjamin Kleynhans
+# Last Modified Date  : September 11, 2020
+# Filename            : get_network_status.sh
+#
+###
 
 # State changes can take a few moments to be executed, which
 # is why they have sleep timers
