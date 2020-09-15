@@ -27,15 +27,16 @@ import piplates.DAQC2plate as DAQC2
 
 # Project imports
 from src.sim7600 import Sim7600
-# ~ from src.sim7600_gps import Sim7600_Gps
 from src.filemanager import Filemanager
 
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
 
 class Radiometer:
 
-    def __init__(self, args):
-
+    def __init__(self, sim7600, filemanager, args):
+        
+        self.sim7600 = sim7600
+        self.filemanager = filemanager
         self.args = args
         
         # Is this the first time the script is running after power cycle
@@ -47,24 +48,12 @@ class Radiometer:
         # Should data be uploaded
         self.upload_data = False
         
-        # Save the current time
+        # Save the current timeget
         self.current_time = time.time()
         self.previous_time = self.current_time
         
         # Save today's date to check for 24-hour intervals
         self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
-        
-        # Create instance of filemanager class which does all file related actions
-        self.filemanager = Filemanager(args)
-        
-        # Build the path to the configuration file
-        cfg_file = os.path.join(args['project_root'], 'etc', 'radiometer.json')
-        
-        # Read the contents of the file into the global preferences file
-        self.args['preferences'] = self.filemanager.load_file(cfg_file)
-        
-        # Create instances of base SIM7600X module
-        self.sim7600 = Sim7600(self.args)
         
         # Turn SIM7600 module on
         self.sim7600.power_on()
@@ -72,8 +61,9 @@ class Radiometer:
         # Get GPS Coordinates
         self.args['coordinates'] = self.sim7600.get_position()
         
-        # Turn off Pi-Plates status LED
-        DAQC2.setLED(0,'off')
+        # Turn off Pi-Plates status LED on each plate
+        for i in range(0, 2):
+            DAQC2.setLED(i,'off')
         
         # Run program loop
         while True:
@@ -136,6 +126,17 @@ class Radiometer:
         # Power off Sim7600
         self.sim7600.power_off()
         
+        # Check if there are any files in the storage root directory that have become "stale"
+        # (they are from previous days) and move them to the "toUpload" directory
+        stale_files = self.filemanager.get_local_contents('/mnt/storage')
+        
+        for s_file in stale_files:
+            if s_file[6:8] != "{}".format(datetime.now(timezone.utc).strftime('%d')):
+                self.filemanager.move_file(
+                    os.path.join(self.args['preferences']['savePath'], s_file), 
+                    self.args['preferences']['toUploadPath']
+                )
+        
         # Delete cron log after successful startup
         if self.delete_cron_log:
             self.delete_cron_log = False
@@ -169,17 +170,18 @@ class Radiometer:
         
         data_string = ""
                 
-        for i in range(8):
-            data_string += "{:.5f},".format(DAQC2.getADC(0,i))
-            
-            if i == 1:
-                data_string += "I1,"
+        for i in range(2):
+            for j in range(8):
+                data_string += "{:.5f},".format(DAQC2.getADC(i, j))
                 
-            if i == 3:
-                data_string += "I2,"
-                
-            if i == 7:
-                data_string += "I3,"
+                if i == 0 and j == 1:
+                    data_string += "I1,"
+                    
+                if i == 0 and j == 3:
+                    data_string += "I2,"
+                    
+                if i == 0 and j == 7:
+                    data_string += "I3,"
         
         data_string += "{},".format(datetime.now(timezone.utc).strftime('%Y'))
         data_string += "{},".format(datetime.now(timezone.utc).strftime('%m'))
@@ -188,7 +190,7 @@ class Radiometer:
         data_string += "{},".format(datetime.now(timezone.utc).strftime('%M'))
         data_string += "{}\n".format(datetime.now(timezone.utc).strftime('%S'))
         
-        # ~ print(data_string, end = '')
+        print(data_string, end = '')
         
         self.filemanager.save_to_file(
                             self.args['preferences']['savePath'], 
@@ -333,6 +335,8 @@ class Radiometer:
         coordinate_string += '{:.3f}"'.format(self.args['coordinates']['longitude']['seconds'])
         coordinate_string += ' {}\n'.format(self.args['coordinates']['longitude']['direction'])
         
+        print(coordinate_string, end = '')
+        
         # Write the coordinates of the radiometer
         self.filemanager.save_to_file(
             self.args['preferences']['savePath'], 
@@ -353,17 +357,29 @@ class Radiometer:
         )
         
         
-        def __del__(self):
-            
-            # Power off Sim7600
-            self.sim7600.power_off()
+    def __del__(self):
+        
+        # Power off Sim7600
+        self.sim7600.power_off()
 
 
 # Main entry to the Radiometer program
 def main(args):
+    
+    # Create instance of filemanager class which does all file related actions
+    filemanager = Filemanager(args)
+    
+    # Build the path to the configuration file
+    cfg_file = os.path.join(args['project_root'], 'etc', 'radiometer.json')
+    
+    # Read the contents of the file into the global preferences file
+    args['preferences'] = filemanager.load_file(cfg_file)
+    
+    # Create instances of base SIM7600X module
+    sim7600 = Sim7600(args)
 
     try:
-        Radiometer(args)
+        Radiometer(sim7600, filemanager, args)
     except:
         # Power off Sim7600
-        self.sim7600.power_off()
+        sim7600.power_off()
