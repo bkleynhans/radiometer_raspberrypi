@@ -1,8 +1,11 @@
 ###
 #
+# Class for managing the Sim7600 4G/3G/2G/GSM/GPRS/GNSS HAT for Raspberry Pi, LTE
+#    module from WaveShare
 #
-#
-# Program Description : 
+# Program Description : This class works as an "easy-to-use" API for the Sim7600 module. It
+#                           does not include all functionality of the module, but allows for
+#                           most of the commonly used tasks.
 # Created By          : Benjamin Kleynhans
 # Creation Date       : August 19, 2020
 # Authors             : Benjamin Kleynhans
@@ -14,8 +17,9 @@
 ###
 
 # Imports
-import os, subprocess
+import os, sys, subprocess
 import time
+import inspect
 import pdb
 
 # Raspberry Pi Specific imports
@@ -26,7 +30,13 @@ class Sim7600():
     # Constructor
     def __init__(self, args): #radio, provider, power_key = 6):
         
-        self.defined = {            
+        # Set the debug variable to true to print additional debugging information
+        self.debug = False
+        
+        # The defined dictionary contains a set of predefined strings
+        # that are used for interface with the sim7600 module.  These strings
+        # are also used to compile interface strings in the build_command function.
+        self.defined = {
             'gsmProvider'           : args['preferences']['provider'],
             'gsmRadio'              : args['preferences']['sim7600']['radio'],
             'serial0'               : args['preferences']['sim7600']['serial0'],
@@ -47,31 +57,46 @@ class Sim7600():
             'offline'               : "offline"
         }
         
+        # Maintains the current logical state of the module
         self.power_status = 'offline'
         
         self.serial0 = serial.Serial(self.defined['serial0'], self.defined['baudRate'])
         self.serial0.flushInput()
         
+        self.hard_power_off()
+
+
+    # Powers the device down to ensure uniform startup of program and hardware interface
+    def hard_power_off(self):
         
-    def connect(self):        
+        self._print_debug_info()
+                
+        self._send_at_command('AT+CPOF', 'OK', 1)
+        time.sleep(10)
+    
+    
+    # Connects the module to the internet
+    def connect(self):
         
-        print("connect")
+        self._print_debug_info()
         
-        self.turn_gsm_radio_on()        
+        self.turn_gsm_radio_on()
         self.update_wwan_protocol()
-        self.connect_wwan_network()        
-        
-        
+        self.connect_wwan_network()
+
+
+    # Disconnects the module from the internet
     def disconnect(self):
         
-        print("disconnect")
+        self._print_debug_info()
         
         self.turn_gsm_radio_off()
-        
-        
+
+
+    # Turns the GSM radio on
     def turn_gsm_radio_on(self):
         
-        print("turn_gsm_radio_on")
+        self._print_debug_info()
 
         # If the sim7600 module is still online, we need to place it offline before continuing
         if self.get_gsm_radio_status() == 'online':
@@ -98,7 +123,7 @@ class Sim7600():
     
     def update_wwan_protocol(self):
         
-        print("update_wwan_protocol")
+        self._print_debug_info()
         
         time.sleep(10)
         
@@ -127,7 +152,7 @@ class Sim7600():
     
     def connect_wwan_network(self):
         
-        print("connect_wwan_network")
+        self._print_debug_info()
 
         command_string = "sudo qmicli -p -d "
         command_string += self.defined['gsmRadio']
@@ -155,7 +180,7 @@ class Sim7600():
 
     def get_ip_address(self):
         
-        print("get_ip_address")
+        self._print_debug_info()
         
         command_string = "sudo udhcpc -i " + self.defined['wwanInterface']        
         stream = os.popen(command_string)
@@ -165,7 +190,7 @@ class Sim7600():
     
     def update_routing_table(self):
 
-        print("update_routing_table")
+        self._print_debug_info()
 
         command_string = "sudo ip a s " + self.defined['wwanInterface']
         stream = os.popen(command_string)
@@ -182,7 +207,7 @@ class Sim7600():
 
     def reset_gsm_radio(self):
         
-        print("reset_gsm_radio")
+        self._print_debug_info()
 
         time.sleep(10)
 
@@ -195,7 +220,7 @@ class Sim7600():
     
     def turn_gsm_radio_off(self):
         
-        print("turn_gsm_radio_off")
+        self._print_debug_info()
 
         stream = os.popen(self.build_command('setRadioMode', 'offline'))
         radio_status = stream.read()
@@ -205,7 +230,7 @@ class Sim7600():
         
     def get_gsm_radio_status(self):
         
-        print("get_gsm_radio_status")
+        self._print_debug_info()
 
         # Get the operating mode -> Is the GSM radio on or off
         stream = os.popen(self.build_command('getRadioMode'))
@@ -219,7 +244,7 @@ class Sim7600():
 
     def get_gsm_signal_strength(self):
         
-        print("get_gsm_signal_strength")
+        self._print_debug_info()
 
         stream = os.popen(self.build_command('getSignalStrength'))
         return stream.read()
@@ -227,7 +252,7 @@ class Sim7600():
 
     def get_gsm_home_network(self):
         
-        print("get_gsm_home_network")
+        self._print_debug_info()
 
         stream = os.popen(self.build_command('getHomeNetwork'))
         return stream.read()
@@ -235,7 +260,7 @@ class Sim7600():
 
     def get_wwan_interface(self):
         
-        print("get_wwan_interface")
+        self._print_debug_info()
 
         # Get the wwan interface name
         stream = os.popen(self.build_command('getWwanInterface'))
@@ -243,6 +268,8 @@ class Sim7600():
         
         
     def get_network_status(self):
+        
+        self._print_debug_info()
         
         initial_status = None
         
@@ -261,6 +288,8 @@ class Sim7600():
     
     def build_command(self, cmd, status=None):
         
+        self._print_debug_info()
+        
         command = self.defined['gsmRadioCommand']
         command += self.defined['gsmRadio']
         command += self.defined[cmd]
@@ -276,6 +305,8 @@ class Sim7600():
 
 
     def return_status(self, value):
+        
+        self._print_debug_info()
 
         returnValue = False
 
@@ -289,6 +320,8 @@ class Sim7600():
 # PHYSICAL DEVICE MODULES
     def power_on(self):
         
+        self._print_debug_info()
+        
         try:
             self._power_on()
         except:
@@ -301,6 +334,8 @@ class Sim7600():
             
     def power_off(self):
         
+        self._print_debug_info()
+        
         try:
             self._power_off()
         except:
@@ -312,7 +347,11 @@ class Sim7600():
             
             
     def _power_on(self):
+        
+        self._print_debug_info()
+        
         print('Powering on SIM7600X')
+        
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
         GPIO.setup(self.defined['powerKey'], GPIO.OUT)
@@ -326,21 +365,30 @@ class Sim7600():
         self.power_status = "online"
         
         self.get_wwan_interface()
+        
         print('SIM7600X is ready')
         
         
     def _power_off(self):
+        
+        self._print_debug_info()
+        
         print('Powering down SIM7600X')
+        
         GPIO.output(self.defined['powerKey'], GPIO.HIGH)
         time.sleep(3)
         GPIO.output(self.defined['powerKey'], GPIO.LOW)
         time.sleep(18)
+        
         self.power_status = "offline"
+        
         print('SIM7600 has been powered off')
         
             
 # GPS MODULES
     def get_position(self):
+        
+        self._print_debug_info()
         
         try:
             return(self._get_position())
@@ -353,23 +401,41 @@ class Sim7600():
         
         
     def _get_position(self):
-        receive_null = True
-        answer = 0
+        
+        self._print_debug_info()
+                
         print('Starting GPS session...')
+        
+        receive_null = True
+        answer = 0        
         receive_buffer = ''
         self._send_at_command('AT+CGPS=1,1', 'OK', 1)
         time.sleep(2)
         
+        # if the modem was not shut down properly, it might go into a loop that refuses to connect
+        # in that case, power off the modem and try again
+        power_cycle_counter = 0
+        reboot_counter = 0
+        
         while receive_null:
+            if power_cycle_counter == 1000 and reboot_counter < 2:
+                self.power_off()
+                time.sleep(60)
+                self.power_on()
+                time.sleep(10)
+                power_cycle_counter = 0
+                reboot_counter += 1
+            elif power_cycle_counter == 1000 and reboot_counter == 2:
+                os.popen("sudo reboot")
+            else:
+                power_cycle_counter += 1
+                time.sleep(2)
+                print("Attempt : {}".format(power_cycle_counter))
+            
             answer, receive_buffer = self._send_at_command('AT+CGPSINFO', '+CGPSINFO: ', 1)
             
             if answer == 1:
                 answer = 0
-                
-                # ~ if ',,,,,,' in receive_buffer:
-                    # ~ print('GPS is not ready')
-                    # ~ receive_null = False
-                    # ~ time.sleep(1)
             else:
                 print('error %d' %answer)
                 receive_buffer = ''
@@ -378,7 +444,7 @@ class Sim7600():
                 
             time.sleep(1.5)
                         
-            if '+CGPSINFO' in receive_buffer and ',,,,,,,,' not in receive_buffer:                
+            if '+CGPSINFO' in receive_buffer and ',,,,,,,,' not in receive_buffer:
                 gpgga_array = receive_buffer[receive_buffer.index(':') + 1:].split(',')
                 
                 self.coordinates = {
@@ -400,6 +466,9 @@ class Sim7600():
         
         
     def _send_at_command(self, command, return_value, timeout):
+        
+        self._print_debug_info()
+        
         receive_buffer = ''
         self.serial0.write((command+'\r\n').encode())
         time.sleep(timeout)
@@ -423,6 +492,16 @@ class Sim7600():
         else:
             print('GPS is not ready')
             return 0
+            
+            
+    def _print_debug_info(self):
+        
+        if self.debug:
+            current_frame = inspect.currentframe()
+            caller_frame = inspect.getouterframes(current_frame, 2)
+            
+            print("\nDefinition     : {}".format(caller_frame[1][3]))
+            print("Called from    : {}\n".format(caller_frame[2][3]))
         
 # Destructor
     def __del__(self):
