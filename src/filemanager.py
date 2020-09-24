@@ -138,8 +138,18 @@ class Filemanager():
         command_string += local_destination_path
                 
         os.popen(command_string)
+    
+    
+    def copy_file(self, full_source_path, local_destination_path):
         
-        
+        command_string = "sudo cp "
+        command_string += full_source_path
+        command_string += " "
+        command_string += local_destination_path
+                
+        os.popen(command_string)
+    
+    
     def delete_file(self, full_file_path):
         
         command_string = "sudo rm "
