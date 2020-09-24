@@ -418,19 +418,19 @@ class Sim7600():
         reboot_counter = 0
         
         while receive_null:
-            if power_cycle_counter == 1000 and reboot_counter < 2:
-                self.power_off()
-                time.sleep(60)
-                self.power_on()
-                time.sleep(10)
-                power_cycle_counter = 0
-                reboot_counter += 1
-            elif power_cycle_counter == 1000 and reboot_counter == 2:
-                os.popen("sudo reboot")
-            else:
-                power_cycle_counter += 1
-                time.sleep(2)
-                print("Attempt : {}".format(power_cycle_counter))
+            # ~ if power_cycle_counter == 1000 and reboot_counter < 2:
+                # ~ self.power_off()
+                # ~ time.sleep(60)
+                # ~ self.power_on()
+                # ~ time.sleep(10)
+                # ~ power_cycle_counter = 0
+                # ~ reboot_counter += 1
+            # ~ elif power_cycle_counter == 1000 and reboot_counter == 2:
+                # ~ os.popen("sudo reboot")
+            # ~ else:
+            power_cycle_counter += 1
+            time.sleep(2)
+            print("Attempt : {}".format(power_cycle_counter))
             
             answer, receive_buffer = self._send_at_command('AT+CGPSINFO', '+CGPSINFO: ', 1)
             
