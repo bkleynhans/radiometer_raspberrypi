@@ -28,6 +28,7 @@ import piplates.DAQC2plate as DAQC2
 # Project imports
 from src.sim7600 import Sim7600
 from src.filemanager import Filemanager
+from src.weather_sensors import WeatherSensors
 
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
 
@@ -61,6 +62,14 @@ class Radiometer:
         # Get GPS Coordinates
         self.args['coordinates'] = self.sim7600.get_position()
         
+        # Add variables for wind and rain meter
+        self.args['anemometer'] = 0
+        self.args['rainGauge'] = 0
+        
+        # Create an instance of the WeatherSensors object
+        # This is a threaded object that measures wind speed and rain
+        self.weather_sensors = WeatherSensors(self.args)
+        
         # Turn off Pi-Plates status LED on each plate
         for i in range(0, 2):
             DAQC2.setLED(i,'off')
@@ -84,6 +93,11 @@ class Radiometer:
         if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
             self.new_day_procedure()
             
+        # The wind and rain sensors work on running averages of ticks per second,
+        # as such they need to be read continuously
+        self.weather_sensors.read_anemometer()
+        self.weather_sensors.read_rain_gauge()
+        
         self.current_time = time.time()
         
         elapsed_time = self.current_time - self.previous_time
@@ -218,12 +232,23 @@ class Radiometer:
                 
         for idx in heading_indices:
             if idx[:2] == "ch":
-                data_string += "{:.5f},".format(
-                    DAQC2.getADC(
-                        int(idx[2]),#self.args['preferences']['headerIndices'][idx]['board'],
-                        int(idx[3])#self.args['preferences']['headerIndices'][idx]['position']
+                
+                # Read the normal input pins
+                if self.args['preferences']['headerIndices'][idx] == "Anemometer(km/h)": # 1 tick per second = 2.4km/h
+                    data_string += "{:.1f},".format(
+                        self.args['anemometer']
                     )
-                )
+                elif self.args['preferences']['headerIndices'][idx] == "RainGauge(mm)": # 1 tick = 0.2794mm rain
+                    data_string += "{:.4f},".format(
+                        self.args['rainGauge']
+                    )
+                else:
+                    data_string += "{:.5f},".format(
+                        DAQC2.getADC(
+                            int(idx[2]),
+                            int(idx[3])
+                        )
+                    )
         
         data_string += "{},".format(datetime.now(timezone.utc).strftime('%Y'))
         data_string += "{},".format(datetime.now(timezone.utc).strftime('%m'))
