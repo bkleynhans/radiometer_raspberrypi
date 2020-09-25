@@ -13,8 +13,8 @@
         "ch10": "Channel11",
         "ch11": "Channel12",
         "ch12": "Channel13",
-        "ch13": "Channel14",
-        "ch14": "Channel15",
+        "ch13": "RainGauge(mm)",
+        "ch14": "Anemometer(km/h)",
         "ch15": "Channel16",
         "ch16": "Channel17",
         "ch17": "Channel18"
@@ -57,5 +57,7 @@
         "radio": "/dev/cdc-wdm0",
         "serial0": "/dev/ttyS0",
         "baudRate": 115200
-    }
+    },
+    "rainConstant": 0.2794,
+    "anemometerConstant": 2.4
 }
