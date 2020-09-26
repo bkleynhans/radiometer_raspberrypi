@@ -137,8 +137,18 @@ class Radiometer:
         # Set the filename for the new data file
         self.build_filename()
 
-        # Write the headings to the new data file
-        self.build_heading()
+        # Test if a sample file for the specific date already exists
+        data_files = self.filemanager.get_local_contents(self.args['preferences']['savePath'])
+        create_headings = True
+        
+        for data_file in data_files:
+            if data_file == self.args['filename']:
+                create_headings = False
+        
+        # If there is no file for the specified date, create a new file and add headings
+        if create_headings:
+            # Write the headings to the new data file
+            self.build_heading()
         
         self.initial_startup = False
         
@@ -148,7 +158,7 @@ class Radiometer:
         # Power off Sim7600
         self.sim7600.power_off()
         
-        # Move stale files to toUpload directoryp
+        # Move stale files to toUpload directory
         self.check_stale_files()
         
         # Delete cron log after successful startup
@@ -164,26 +174,28 @@ class Radiometer:
         self.upload_data = True
         self.initial_startup = True
         
-        print("Copying {} to 'toUpload' directory".format(
-            os.path.join(self.args['preferences']['savePath'],self.args['filename']))
+        print("Copying {} to {} directory".format(
+                os.path.join(self.args['preferences']['savePath'],self.args['filename']),
+                os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
+            )
         )
         
         # Create a copy of the current day file in the 'toUpload' directory
         self.filemanager.copy_file(
                 os.path.join(self.args['preferences']['savePath'], self.args['filename']),
-                self.args['preferences']['toUploadPath']
+                os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
             )
         
-        print("Renaming {} to {}".format(
-            os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']), 
-            os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv"))
-        )
+        # ~ print("Renaming {} to {}".format(
+            # ~ os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']), 
+            # ~ os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv"))
+        # ~ )
         
-        # Rename the sample file to 'sample_test.csv'
-        self.filemanager.move_file(
-            os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']),
-            os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
-        )
+        # ~ # Rename the sample file to 'sample_test.csv'
+        # ~ self.filemanager.move_file(
+            # ~ os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']),
+            # ~ os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
+        # ~ )
     
     
     # Check if there are any files in the storage root directory that have become "stale"
@@ -368,7 +380,7 @@ class Radiometer:
         
     def build_filename(self):
         
-        print("    --- Building Filename --- \n")
+        print("\n    --- Building Filename --- \n")
         
         # Set the new filename
         self.args['filename'] = str(datetime.now(timezone.utc).strftime('%Y'))
