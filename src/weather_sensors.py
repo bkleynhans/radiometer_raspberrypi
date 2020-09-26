@@ -134,37 +134,6 @@ class WeatherSensors:
                 self.gauges['anemometer']['recordedTick'] = True
         else:
             self.gauges['anemometer']['recordedTick'] = False
-    
-    
-    # ~ # Start reading the Anemometer
-    # ~ def read_anemometer(self):
-        
-        # ~ recorded_tick = False
-        
-        # ~ current_time = time.time()
-        # ~ previous_time = current_time
-        
-        # ~ number_ticks = 0
-        
-        # ~ current_time = time.time()
-        # ~ elapsed_time = current_time - previous_time
-        
-        # ~ if elapsed_time >= 1:
-            # ~ self.args['anemometer'] = (number_ticks * self.args['preferences']['anemometerConstant'])
-            # ~ number_ticks = 0
-            # ~ previous_time = current_time
-        
-        # ~ temp_val = DAQC2.getADC(
-                        # ~ int(self.anemometer_channel[2]),
-                        # ~ int(self.anemometer_channel[3])
-                    # ~ )
-                    
-        # ~ if temp_val > 1:
-            # ~ if not recorded_tick:
-                # ~ number_ticks += 1
-                # ~ recorded_tick = True
-        # ~ else:
-            # ~ recorded_tick = False
 
 
     # Start monitoring the Anemometer
