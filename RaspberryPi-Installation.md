@@ -15,7 +15,7 @@
 * [Format USB Thumb Drive with exFAT partition](#format-usb-thumb-drive-with-exfat-partition)
 * [Install PiPlates Libraries](#install-piplates-libraries)
 * [Update PiPlates Precision](#update-piplates-precision)
-* [Launch Program at Boot](#launch-program-at-boot)
+* [Clone the Program Repository](#clone-the-program-repository)
 * [Disable WiFi](#disable-wifi)
 * [Optional for Developers](#optional-for-developers)
   * [Configure X11 over SSH](#configure-x11-over-ssh)
@@ -244,17 +244,12 @@ value=round(value*calscale[addr][channel]+calOffset[addr][channel],5)
 
 Save the file and exit.
 
-## Launch Program at Boot
-Because the units will be deployed in the field, without being connected to a screen or keyboard, we need to configure it to launch the program on boot.  In order to launch the program at boot time, we need to add a line to the *crontab*.
+## Clone the Program Repository
+The entire radiometer program is in this repository.  For the radiometer to work you need to clone the repository to the Raspberry Pi.  In order to do this, go into the *pi* home directory and clone the project by performing the following actions.
 
 ```
-sudo crontab -e
-```
-
-The following line instructs *cron* to launch the program at boot time and create a log file of the program launch process in the pi home directory.  Add it at the bottom of the opened file.
-
-```
-@reboot sleep 60 && /home/pi/radiometer_raspberrypi/launcher.py >> /home/pi/cron.log 2>&1
+cd ~
+git clone https://github.com/BKleynhans-WIP/radiometer-raspberrypi
 ```
 
 ## Disable WiFi
