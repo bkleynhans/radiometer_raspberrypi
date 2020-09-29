@@ -48,6 +48,9 @@ class Radiometer:
         
         # Should data be uploaded
         self.upload_data = False 
+
+        # Should we get a GPS postion
+        self.get_gps_position = True
         
         # Save the current time
         self.current_time = time.time()
@@ -60,7 +63,8 @@ class Radiometer:
         self.sim7600.power_on()
         
         # Get GPS Coordinates
-        self.args['coordinates'] = self.sim7600.get_position()
+        if self.get_gps_position:
+            self.args['coordinates'] = self.sim7600.get_position()
         
         # Add variables for wind and rain meter
         self.args['anemometer'] = 0
@@ -117,7 +121,7 @@ class Radiometer:
     # The startup procedure runs on system boot, and every time the date changes
     def startup_procedure(self):
         
-        print("     --- Running startup configuration ---\n", end = '')
+        print("\n     --- Running startup configuration ---\n")
         
         # Turn the sim7600 module on if it is offline
         if self.sim7600.power_status == "offline":
@@ -126,13 +130,20 @@ class Radiometer:
         # Connect to the internet
         self.sim7600.connect()
 
-        # If we need to upload a data file, upload it
-        if self.upload_data:
-            self.upload_to_server()
+        # Only try to upload data if the device successfully connected to the internet
+        if self.sim7600.connected:
+            # If we need to upload a data file, upload it
+            if self.upload_data:
+                self.upload_to_server()
+                self.upload_data = False
+                
+            # Update the current day from the internet
+            self.set_clock()
+        
+        # If the device does not connect to internet, we need to disable the upload
+        # sequence or the device will go into a loop by continually trying to connect
+        else:
             self.upload_data = False
-            
-        # Update the current day from the internet
-        self.set_clock()
         
         # Set the filename for the new data file
         self.build_filename()
@@ -152,8 +163,9 @@ class Radiometer:
         
         self.initial_startup = False
         
-        # Disconnect from internet
-        self.sim7600.disconnect()
+        if self.sim7600.connected:
+            # Disconnect from internet
+            self.sim7600.disconnect()
         
         # Power off Sim7600
         self.sim7600.power_off()
@@ -185,17 +197,6 @@ class Radiometer:
                 os.path.join(self.args['preferences']['savePath'], self.args['filename']),
                 os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
             )
-        
-        # ~ print("Renaming {} to {}".format(
-            # ~ os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']), 
-            # ~ os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv"))
-        # ~ )
-        
-        # ~ # Rename the sample file to 'sample_test.csv'
-        # ~ self.filemanager.move_file(
-            # ~ os.path.join(self.args['preferences']['toUploadPath'], self.args['filename']),
-            # ~ os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
-        # ~ )
     
     
     # Check if there are any files in the storage root directory that have become "stale"
@@ -217,7 +218,7 @@ class Radiometer:
     # The new day procedure runs every time the date changes
     def new_day_procedure(self):
         
-        print("     --- Day has changed, updating configuration and creating new file ---\n", end = '')
+        print("\n     --- Day has changed, updating configuration and creating new file ---\n")
         
         # Update the current Day
         self.today = datetime.now(timezone.utc).strftime('%Y%m%d')
@@ -250,6 +251,23 @@ class Radiometer:
                     data_string += "{:.1f},".format(
                         self.args['anemometer']
                     )
+                elif self.args['preferences']['headerIndices'][idx] == "RainGauge(mm)": # 1 tick = 0.2794mm rain
+                    data_string += "{:.4f},".format(
+                        self.args['rainGauge']
+                    )
+                # Relative humidity is calculated using the formula:
+                # RH = 0.0375 * Vout - 37.7
+                # Vout needs to be in mV and RH in %
+                elif self.args['preferences']['headerIndices'][idx] == "RelativeHumidity(%)": 
+                    Vout = DAQC2.getADC(
+                            int(idx[2]),
+                            int(idx[3])
+                        ) * 1000 # We have to convert voltage to mV as it is read in V
+                        
+                    RH = 0.0375 * Vout - 37.7
+                    
+                    data_string += "{:.4f},".format(RH)
+                    
                 elif self.args['preferences']['headerIndices'][idx] == "RainGauge(mm)": # 1 tick = 0.2794mm rain
                     data_string += "{:.4f},".format(
                         self.args['rainGauge']
@@ -289,7 +307,7 @@ class Radiometer:
         self.filemanager.build_structure(self.args['preferences']['siteName'], self.args['filename'])
         
         for csv_source_file in files_to_upload:
-            print("Zipping {}".format(csv_source_file))
+            print("\n>> Zipping {}".format(csv_source_file))
 
             full_source_path = self.zip_file(
                                     self.args['preferences']['toUploadPath'],
@@ -302,6 +320,9 @@ class Radiometer:
                                             self.args['preferences']['siteName'],
                                             "sample_test.zip"
                                         )
+                
+                print("\n     --- Uploading SAMPLE_TEST.ZIP to server ---\n")
+
             else:
                 full_destination_path = os.path.join(
                                             self.args['preferences']['protocol']['ssh']['remoteDestinationPath'],
@@ -311,7 +332,7 @@ class Radiometer:
                                             full_source_path[full_source_path.rfind('/') + 1:]
                                         )
 
-            print("     --- Uploading DATA to server ---\n", end = '')
+                print("\n     --- Uploading {} to server ---\n".format(full_source_path[full_source_path.rfind('/') + 1:].upper()))
             
             try:
                 self.filemanager.upload_to_server(full_source_path, full_destination_path)
@@ -323,7 +344,7 @@ class Radiometer:
                 print("\n   !!! An Exception Occurred During Remote Transfer !!!")
                 print("{}".format(e))
             
-            print("     --- Moving old file ---")
+            print("\n     --- Moving old file ---\n")
                 
             try:
                 if csv_source_file != "sample_test.csv":
@@ -380,7 +401,7 @@ class Radiometer:
         
     def build_filename(self):
         
-        print("\n    --- Building Filename --- \n")
+        print("\n\n    --- Building Filename --- \n")
         
         # Set the new filename
         self.args['filename'] = str(datetime.now(timezone.utc).strftime('%Y'))
@@ -391,10 +412,13 @@ class Radiometer:
     
     def build_heading(self):
         
-        print("    --- Building Heading ---")
+        print("\n    --- Building Heading ---\n")
         
         self.write_title_string()
-        self.write_coordinate_string()
+        
+        if self.get_gps_position:
+            self.write_coordinate_string()
+
         self.write_heading_string()
         
         
