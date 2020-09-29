@@ -68,7 +68,7 @@ class Filemanager():
                         password=self.preferences['protocol']['ssh']['password']
                     )
                     
-                    connected = true
+                    connected = True
                 except:
                     continue
                     
