@@ -89,8 +89,6 @@ class WeatherSensors:
         elapsed_time = current_time - self.gauges['rainGauge']['previousTime']
         
         if elapsed_time >= 1:
-            # ~ print("Rain : {:.4f} mm".format(
-                # ~ self.gauges['rainGauge']['numberTicks'] * self.args['preferences']['rainConstant']))
             self.args['rainGauge'] = (
                 self.gauges['rainGauge']['numberTicks'] * self.args['preferences']['rainConstant'])
             self.gauges['rainGauge']['numberTicks'] = 0
@@ -116,8 +114,6 @@ class WeatherSensors:
         elapsed_time = current_time - self.gauges['anemometer']['previousTime']
         
         if elapsed_time >= 1:
-            # ~ print("Wind : {:.1f} km/h".format(
-                # ~ self.gauges['anemometer']['numberTicks'] * self.args['preferences']['anemometerConstant']))
             self.args['anemometer'] = (
                 self.gauges['anemometer']['numberTicks'] * self.args['preferences']['anemometerConstant'])
             self.gauges['anemometer']['numberTicks'] = 0
