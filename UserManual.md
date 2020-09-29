@@ -5,9 +5,10 @@ The user manual is a basic guide explaining how to use the radiometer.  It conta
 # Table of Contents
 ---
 * [Using the Raspberry Pi-based radiometer](#using-the-raspberry-pi-based-radiometer)
-  * [Setting the Site Name and Heading Order](#setting-the-site-name-and-heading-order)
-  * [Changing the Password](#changing-the-password)
+  * [Setting the Site Name and Heading Order](#setting-the-site-name-and-heading-order)  
   * [Launch the Program at Boot](#launch-the-program-at-boot)
+  * [Stopping the Program after Boot](#stopping-the-program-after-boot)
+  * [Changing the Password](#changing-the-password)
 
 # Using the Raspberry Pi-based radiometer
 ---
@@ -58,6 +59,38 @@ The following line instructs *cron* to launch the program at boot time and creat
 ```
 @reboot sleep 60 && /home/pi/radiometer_raspberrypi/launcher.py >> /home/pi/cron.log 2>&1
 ```
+
+## Stopping the Program after Boot
+---
+If the system is configure to run at boot time (from the previous section) you would have to manually stop the program before you can make changes to the *radiometer.json* file which contains the confirmation details.  To stop the process, log into the system and issue the *sudo ps -aux | grep launcher* command.
+
+```
+sudo ps -aux | grep launcher
+```
+
+The output for this command should look similar to the following:
+
+<img src="img/launcher_pre_kill.png" alt="sudo ps -aux | grep launcher" /><br>
+
+Look for a line that is similar to the one highlighted in yellow.  We need the first number in this line, it is highlighted red in the following image.
+
+<img src="img/launcher_kill.png" alt="sudo kill -9" /><br>
+
+Once you have found the number (330 in this case) issue the command to kill the process.
+
+```
+sudo kill -9 330
+```
+
+Finally we run the *sudo ps -aux | grep launcher* command again to make sure the process has been stopped.
+
+```
+sudo ps -aux | grep
+```
+
+<img src="img/launcher_post_kill.png" alt="sudo ps -aux | grep launcher" /><br>
+
+You should notice that the line we were referring to before, is no longer visible.  This means we have successfully stopped the process.
 
 ## Changing the Password
 ---
