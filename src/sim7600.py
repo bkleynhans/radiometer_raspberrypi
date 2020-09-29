@@ -12,7 +12,7 @@
 #
 # Last Modified By    : Benjamin Kleynhans
 # Last Modified Date  : September 9, 2020
-# Filename            : sim7600.py
+# Filename            : sim7600.pyd
 #
 ###
 
@@ -60,6 +60,9 @@ class Sim7600():
         # Maintains the current logical state of the module
         self.power_status = 'offline'
         
+        # Keep track of whether the device successfully connected to the internet
+        self.connected = False
+        
         self.serial0 = serial.Serial(self.defined['serial0'], self.defined['baudRate'])
         self.serial0.flushInput()
         
@@ -91,6 +94,8 @@ class Sim7600():
         self._print_debug_info()
         
         self.turn_gsm_radio_off()
+        
+        self.connected = False
 
 
     # Turns the GSM radio on
@@ -112,15 +117,15 @@ class Sim7600():
             self.reset_gsm_radio()
 
         time.sleep(30)
-
-        # Turn the GSM radio on        
-        stream = os.popen(self.build_command('setRadioMode', 'online'))
-        radio_status = stream.read()
-
+            
+        radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'online'))
+        
         if self.return_status(radio_status):
             print("GSM Radio Status : Online")
         
     
+    # The wwan protocol needs to be set to raw_ip.  This has to be done every time the
+    # unit connects, as it resets to default automatically when power is cycled
     def update_wwan_protocol(self):
         
         self._print_debug_info()
@@ -128,10 +133,10 @@ class Sim7600():
         time.sleep(10)
         
         # Bring the interface down
-        command_string = 'sudo ip link set ' + self.defined['wwanInterface'] + ' down'
+        command_string = self.defined['wwanInterfaceCommand'] + self.defined['wwanInterface'] + ' down'
         
         print(command_string)
-        os.popen(command_string)        
+        stdout, stderr = self._shell_process(command_string)
 
         time.sleep(5)
 
@@ -139,17 +144,19 @@ class Sim7600():
         filepath = os.path.join('/sys/class/net', self.defined['wwanInterface'], 'qmi/raw_ip')
         command_string = 'sudo bash -c \'echo "Y" >> {}\''.format(filepath)
         
-        os.popen(command_string)
+        print(command_string)
+        stdout, stderr = self._shell_process(command_string)
         
         time.sleep(5)
     
         # Bring the interface up
-        command_string = 'sudo ip link set ' + self.defined['wwanInterface'] + ' up'
+        command_string = self.defined['wwanInterfaceCommand'] + self.defined['wwanInterface'] + ' up'
         
         print(command_string)
-        os.popen(command_string)
+        stdout, stderr = self._shell_process(command_string)
         
     
+    # Open the connection to the internet
     def connect_wwan_network(self):
         
         self._print_debug_info()
@@ -169,104 +176,107 @@ class Sim7600():
 
         command_string += ",ip-type=4\" --client-no-release-cid"
 
-        stream = os.popen(command_string)
-        print(stream.read())
+        # Try to connect to the internet
+        stdout, stderr = self._shell_process(command_string)
+        
+        # Check if there was an error connecting to the internet
+        if "CallFailed" not in stderr:
+            self.connected = True
+            
+            self.get_ip_address()
+            self.update_routing_table()
 
-        temp_data = self.get_ip_address()
-        temp_data += self.update_routing_table()        
 
-        return temp_data
-
-
+    # Request an IP address from the internet connection
     def get_ip_address(self):
         
         self._print_debug_info()
         
-        command_string = "sudo udhcpc -i " + self.defined['wwanInterface']        
-        stream = os.popen(command_string)
-        
-        return stream.read()
+        command_string = "sudo udhcpc -t 10 -n -i " + self.defined['wwanInterface']
+        stdout, stderr = self._shell_process(command_string)
         
     
+    # Update the network routing table
     def update_routing_table(self):
 
         self._print_debug_info()
 
         command_string = "sudo ip a s " + self.defined['wwanInterface']
-        stream = os.popen(command_string)
-
-        temp_string = stream.read()
+        stdout, stderr = self._shell_process(command_string)
 
         command_string = "sudo ip r s"
-        stream = os.popen(command_string)
+        stdout, stderr = self._shell_process(command_string)
+        
 
-        temp_string += stream.read()
-
-        return temp_string
-    
-
+    # Manually reset the GSM radio
     def reset_gsm_radio(self):
         
         self._print_debug_info()
 
         time.sleep(10)
-
-        stream = os.popen(self.build_command('setRadioMode', 'reset'))
-        radio_status = stream.read()
-        
+            
+        radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'reset'))
+            
         if self.return_status(radio_status):
             print("GSM Radio Status : low-power")
         
     
+    # Set the GSM radio to offline mode
     def turn_gsm_radio_off(self):
         
         self._print_debug_info()
-
-        stream = os.popen(self.build_command('setRadioMode', 'offline'))
-        radio_status = stream.read()
-
+        
+        radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'offline'))
+        
         self.return_status(radio_status)
         
         
+    # Get the current status of the GSM radio (online, offline, low-power)
     def get_gsm_radio_status(self):
         
         self._print_debug_info()
 
         # Get the operating mode -> Is the GSM radio on or off
-        stream = os.popen(self.build_command('getRadioMode'))
-        operating_mode = stream.read()
-
+        operating_mode, stderr = self._shell_process(self.build_command('getRadioMode'))
+        
         start_index = operating_mode.index('Mode: ') + len('Mode: ') + 1
         remainder = operating_mode[start_index:]
-
+        
         return remainder[:remainder.index('\n\t') -1]               # returns 'online', 'offline', or 'low-power'
     
 
+    # Get the cellular signal strength
     def get_gsm_signal_strength(self):
         
         self._print_debug_info()
+        
+        stdout, stderr = self._shell_process(self.build_command('getSignalStrength'))
+        
+        return stdout
 
-        stream = os.popen(self.build_command('getSignalStrength'))
-        return stream.read()
 
-
+    # Determine who the cellular provider is we are currently connected to
     def get_gsm_home_network(self):
         
         self._print_debug_info()
+        
+        stdout, stderr = self._shell_process(self.build_command('getHomeNetwork'))
+        
+        return stdout
 
-        stream = os.popen(self.build_command('getHomeNetwork'))
-        return stream.read()
 
-
+    # Get the hardware name of the current WWAN interface
     def get_wwan_interface(self):
         
         self._print_debug_info()
 
         # Get the wwan interface name
-        stream = os.popen(self.build_command('getWwanInterface'))
-        self.defined['wwanInterface'] =  stream.read().rstrip('\n')
+        stdout, stderr = self._shell_process(self.build_command('getWwanInterface'))
         
+        self.defined['wwanInterface'] = stdout.rstrip('\n')
         
+    
+    # Determine if we are currently online or offline
     def get_network_status(self):
         
         self._print_debug_info()
@@ -286,6 +296,7 @@ class Sim7600():
             self.turn_gsm_radio_off()
     
     
+    # Build a command for shell execution
     def build_command(self, cmd, status=None):
         
         self._print_debug_info()
@@ -304,6 +315,7 @@ class Sim7600():
         return command
 
 
+    # Get the status of the SIM7600
     def return_status(self, value):
         
         self._print_debug_info()
@@ -418,16 +430,6 @@ class Sim7600():
         reboot_counter = 0
         
         while receive_null:
-            # ~ if power_cycle_counter == 1000 and reboot_counter < 2:
-                # ~ self.power_off()
-                # ~ time.sleep(60)
-                # ~ self.power_on()
-                # ~ time.sleep(10)
-                # ~ power_cycle_counter = 0
-                # ~ reboot_counter += 1
-            # ~ elif power_cycle_counter == 1000 and reboot_counter == 2:
-                # ~ os.popen("sudo reboot")
-            # ~ else:
             power_cycle_counter += 1
             time.sleep(2)
             print("Attempt : {}".format(power_cycle_counter))
@@ -494,14 +496,28 @@ class Sim7600():
             return 0
             
             
+    def _shell_process(self, command_string):
+        
+        shell_process = subprocess.Popen(
+                            command_string,
+                            shell = True,
+                            stdout = subprocess.PIPE,
+                            stderr = subprocess.PIPE
+                        )
+        stdout, stderr = shell_process.communicate()
+        
+        # Convert stdout and stderr from byte-object type to string-object type and return
+        return stdout.decode("utf-8"), stderr.decode("utf-8")
+    
+    
     def _print_debug_info(self):
         
         if self.debug:
             current_frame = inspect.currentframe()
             caller_frame = inspect.getouterframes(current_frame, 2)
+                        
+            print("\n>> {:25} {:4} {:25}\n".format(caller_frame[2][3], "->" , caller_frame[1][3]))
             
-            print("\nDefinition     : {}".format(caller_frame[1][3]))
-            print("Called from    : {}\n".format(caller_frame[2][3]))
         
 # Destructor
     def __del__(self):
