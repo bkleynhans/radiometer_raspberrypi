@@ -52,6 +52,9 @@ class Radiometer:
         # Should we get a GPS postion
         self.get_gps_position = True
         
+        # How many samples should be taken before the sample upload is done
+        self.sample_size = 120
+        
         # Save the current time
         self.current_time = time.time()
         self.previous_time = self.current_time
@@ -95,6 +98,7 @@ class Radiometer:
         
         # Check if the date has changed, and if it has, upload the file and create a new one
         if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
+            pdb.set_trace()
             self.new_day_procedure()
             
         # The wind and rain sensors work on running averages of ticks per second,
@@ -114,7 +118,7 @@ class Radiometer:
             self.previous_time = self.current_time
         
         # After collecting 10 samples, upload a test file to the server
-        if self.test_counter == 10:
+        if self.test_counter == self.sample_size:
             self.upload_sample_test()
 
 
