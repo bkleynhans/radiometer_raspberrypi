@@ -28,10 +28,12 @@ import serial
 
 class Sim7600():
     # Constructor
-    def __init__(self, args): #radio, provider, power_key = 6):
+    def __init__(self, args):
         
         # Set the debug variable to true to print additional debugging information
         self.debug = False
+        
+        self.args = args;
         
         # The defined dictionary contains a set of predefined strings
         # that are used for interface with the sim7600 module.  These strings
@@ -192,7 +194,8 @@ class Sim7600():
         
         self._print_debug_info()
         
-        command_string = "sudo udhcpc -t 10 -n -i " + self.defined['wwanInterface']
+        # Retry connecting 10 times at 5 second intervals
+        command_string = "sudo udhcpc -t 10 -T 5 -n -i " + self.defined['wwanInterface']
         stdout, stderr = self._shell_process(command_string)
         
     
@@ -419,52 +422,58 @@ class Sim7600():
         print('Starting GPS session...')
         
         receive_null = True
-        answer = 0        
+        answer = 0
         receive_buffer = ''
         self._send_at_command('AT+CGPS=1,1', 'OK', 1)
         time.sleep(2)
         
-        # if the modem was not shut down properly, it might go into a loop that refuses to connect
-        # in that case, power off the modem and try again
-        power_cycle_counter = 0
-        reboot_counter = 0
+        # If the GPS does not triangulate position in 100 tries, use default values
+        default_counter = 0
         
         while receive_null:
-            power_cycle_counter += 1
-            time.sleep(2)
-            print("Attempt : {}".format(power_cycle_counter))
-            
-            answer, receive_buffer = self._send_at_command('AT+CGPSINFO', '+CGPSINFO: ', 1)
-            
-            if answer == 1:
-                answer = 0
-            else:
-                print('error %d' %answer)
-                receive_buffer = ''
-                self._send_at_command('AT+CGPS=0', 'OK', 1)
-                return False
+            if default_counter < 100:
+                default_counter += 1
+                time.sleep(2)
+                print("Attempt : {}".format(default_counter))
                 
-            time.sleep(1.5)
-                        
-            if '+CGPSINFO' in receive_buffer and ',,,,,,,,' not in receive_buffer:
-                gpgga_array = receive_buffer[receive_buffer.index(':') + 1:].split(',')
+                answer, receive_buffer = self._send_at_command('AT+CGPSINFO', '+CGPSINFO: ', 1)
                 
-                self.coordinates = {
-                    'latitude': {
-                        'degrees': gpgga_array[0][:gpgga_array[0].find('.') - 2],
-                        'minutes': gpgga_array[0][3:gpgga_array[0].find('.')],
-                        'seconds': float(gpgga_array[0][gpgga_array[0].find('.'):]) * 60,
-                        'direction': gpgga_array[1]
-                    },
-                    'longitude': {
-                        'degrees': gpgga_array[2][:gpgga_array[2].find('.') - 2],
-                        'minutes': gpgga_array[2][3:gpgga_array[2].find('.')],
-                        'seconds': float(gpgga_array[2][gpgga_array[2].find('.'):]) * 60,
-                        'direction': gpgga_array[3]
+                if answer == 1:
+                    answer = 0
+                else:
+                    print('error %d' %answer)
+                    receive_buffer = ''
+                    self._send_at_command('AT+CGPS=0', 'OK', 1)
+                    return False
+                    
+                time.sleep(1.5)
+                            
+                if '+CGPSINFO' in receive_buffer and ',,,,,,,,' not in receive_buffer:
+                    gpgga_array = receive_buffer[receive_buffer.index(':') + 1:].split(',')
+                    
+                    self.coordinates = {
+                        'latitude': {
+                            'degrees': gpgga_array[0][:gpgga_array[0].find('.') - 2],
+                            'minutes': gpgga_array[0][3:gpgga_array[0].find('.')],
+                            'seconds': float(gpgga_array[0][gpgga_array[0].find('.'):]) * 60,
+                            'direction': gpgga_array[1]
+                        },
+                        'longitude': {
+                            'degrees': gpgga_array[2][:gpgga_array[2].find('.') - 2],
+                            'minutes': gpgga_array[2][3:gpgga_array[2].find('.')],
+                            'seconds': float(gpgga_array[2][gpgga_array[2].find('.'):]) * 60,
+                            'direction': gpgga_array[3]
+                        }
                     }
-                }
+                    
+                    receive_null = False
+                    
+            else:
+                self.coordinates = self.args['preferences']['coordinates']
+                
+                receive_null = False
         
-                return self.coordinates
+        return self.coordinates
         
         
     def _send_at_command(self, command, return_value, timeout):
