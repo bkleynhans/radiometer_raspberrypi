@@ -98,7 +98,6 @@ class Radiometer:
         
         # Check if the date has changed, and if it has, upload the file and create a new one
         if datetime.now(timezone.utc).strftime('%Y%m%d') != self.today:
-            pdb.set_trace()
             self.new_day_procedure()
             
         # The wind and rain sensors work on running averages of ticks per second,
