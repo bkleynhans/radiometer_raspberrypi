@@ -365,7 +365,7 @@ class Sim7600():
         
         self._print_debug_info()
         
-        print('Powering on SIM7600X')
+        print('Powering on SIM7600X\n')
         
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
@@ -388,7 +388,7 @@ class Sim7600():
         
         self._print_debug_info()
         
-        print('Powering down SIM7600X')
+        print('Powering down SIM7600X\n')
         
         GPIO.output(self.defined['powerKey'], GPIO.HIGH)
         time.sleep(3)
