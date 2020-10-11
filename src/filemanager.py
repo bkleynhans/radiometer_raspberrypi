@@ -73,7 +73,34 @@ class Filemanager():
                     continue
                     
     
-    def build_structure(self, site_name, filename):
+    def check_directory_requirements(self):
+        
+        print ("Checking required directory structure on USB drive\n")
+        
+        # The required directories
+        required_dirs = ['toUpload', 'uploaded']
+        
+        # Get a list of directories in the /mnt/storage path
+        existing_dirs = self.get_local_directories(self.preferences['savePath'])
+        
+        count = 0
+        
+        for req_dir in required_dirs:
+            if not req_dir in existing_dirs:
+                temp_dir = os.path.join(self.preferences['savePath'],req_dir)
+                
+                print("{} does not exist... creating...".format(temp_dir))
+                
+                self.create_local_directory(temp_dir)
+                count += 1
+        
+        if count == 0:
+            print("All required directories are present\n")
+        else:
+            print("\nAll required directories have been created\n")
+    
+    
+    def build_remote_structure(self, site_name, filename):
         
         # Extract the year and month from the filename
         year = filename[:4]
@@ -81,15 +108,15 @@ class Filemanager():
         
         # Construct the path to get a directory listing for existing sites
         path_to_sites = self.preferences['protocol']['ssh']['remoteDestinationPath']
-        sites = self.get_remote_contents(path_to_sites)
+        sites = self.get_remote_directories(path_to_sites)
         path_to_years = os.path.join(path_to_sites, site_name)
         
         # If the site name does not exist, create it
-        if not site_name in sites:            
+        if not site_name in sites:
             stdin, stdout, stderr = self.ssh_client.exec_command("mkdir {}".format(path_to_years))
         
         # Construct the path to get a directory listing for existing years
-        years = self.get_remote_contents(path_to_years)
+        years = self.get_remote_directories(path_to_years)
         path_to_months = os.path.join(path_to_years, str(year))
         
         # If the year does not exist, create it
@@ -97,7 +124,7 @@ class Filemanager():
             stdin, stdout, stderr = self.ssh_client.exec_command("mkdir {}".format(path_to_months))
         
         # Construct the path to get a directory listing for existing months
-        months = self.get_remote_contents(path_to_months)
+        months = self.get_remote_directories(path_to_months)
         path_to_days = os.path.join(path_to_months, str(month))
         
         # If the month does not exist, create it
@@ -105,7 +132,7 @@ class Filemanager():
             stdin, stdout, stderr = self.ssh_client.exec_command("mkdir {}".format(path_to_days))
             
                                 
-    def get_remote_contents(self, path):
+    def get_remote_directories(self, path):
         
         stdin, stdout, stderr = self.ssh_client.exec_command("ls {}".format(path))
         
@@ -118,9 +145,14 @@ class Filemanager():
         return formatted_entries
         
         
-    def get_local_contents(self, path):
+    def get_local_files(self, path):
         
         return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        
+        
+    def get_local_directories(self, path):
+        
+        return [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
     
     
     def upload_to_server(self, full_source_path, full_destination_path):
@@ -154,5 +186,13 @@ class Filemanager():
         
         command_string = "sudo rm "
         command_string += full_file_path
+        
+        os.popen(command_string)
+        
+        
+    def create_local_directory(self, directory_path):
+        
+        command_string = "sudo mkdir "
+        command_string += directory_path
         
         os.popen(command_string)
