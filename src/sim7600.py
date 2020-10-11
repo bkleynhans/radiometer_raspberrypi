@@ -109,18 +109,16 @@ class Sim7600():
         if self.get_gsm_radio_status() == 'online':
             print("GSM Radio Status : Online        --> Resetting...")
             self.reset_gsm_radio()
-            
-        time.sleep(30)
 
         # If the sim7600 module is in offline mode, it needs to be reset before it can be
         # made online
         if self.get_gsm_radio_status() == 'offline':
             print("GSM Radio Status : Offline       --> Resetting...")
             self.reset_gsm_radio()
-
-        time.sleep(30)
             
         radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'online'))
+        
+        time.sleep(60)
         
         if self.return_status(radio_status):
             print("GSM Radio Status : Online")
@@ -215,10 +213,10 @@ class Sim7600():
     def reset_gsm_radio(self):
         
         self._print_debug_info()
-
-        time.sleep(10)
             
         radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'reset'))
+        
+        time.sleep(60)
             
         if self.return_status(radio_status):
             print("GSM Radio Status : low-power")
@@ -230,6 +228,8 @@ class Sim7600():
         self._print_debug_info()
         
         radio_status, stderr = self._shell_process(self.build_command('setRadioMode', 'offline'))
+        
+        time.sleep(60)
         
         self.return_status(radio_status)
         
