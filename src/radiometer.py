@@ -50,7 +50,7 @@ class Radiometer:
         self.upload_data = False 
 
         # Should we get a GPS postion
-        self.get_gps_position = False
+        self.get_gps_position = True 
         
         # How many samples should be taken before the sample upload is done
         self.sample_size = 120
