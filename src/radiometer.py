@@ -55,6 +55,9 @@ class Radiometer:
         # How many samples should be taken before the sample upload is done
         self.sample_size = 120
         
+        # Check if required local directories exist, and if they don't creat them
+        self.filemanager.check_directory_requirements()
+        
         # Save the current time
         self.current_time = time.time()
         self.previous_time = self.current_time
@@ -152,7 +155,7 @@ class Radiometer:
         self.build_filename()
 
         # Test if a sample file for the specific date already exists
-        data_files = self.filemanager.get_local_contents(self.args['preferences']['savePath'])
+        data_files = self.filemanager.get_local_files(self.args['preferences']['savePath'])
         create_headings = True
         
         for data_file in data_files:
@@ -176,10 +179,13 @@ class Radiometer:
         # Move stale files to toUpload directory
         self.check_stale_files()
         
-        # Delete cron log after successful startup
-        if self.delete_cron_log:
-            self.delete_cron_log = False
-            self.filemanager.delete_file("/home/pi/cron.log")
+        # Delete cron log after successful startup if present
+        try:
+            if self.delete_cron_log:
+                self.delete_cron_log = False
+                self.filemanager.delete_file("/home/pi/cron.log")
+        except:
+            print("No log file to delete")
 
     
     # Upload the sample file to allow testing of data upload from remote location
@@ -206,7 +212,7 @@ class Radiometer:
     # (they are from previous days) and move them to the "toUpload" directory
     def check_stale_files(self):
         
-        stale_files = self.filemanager.get_local_contents('/mnt/storage')
+        stale_files = self.filemanager.get_local_files('/mnt/storage')
         
         for s_file in stale_files:
             if s_file[6:8] != "{}".format(datetime.now(timezone.utc).strftime('%d')):
@@ -305,9 +311,9 @@ class Radiometer:
         
         self.filemanager.connect_sftp()
         
-        files_to_upload = self.filemanager.get_local_contents(self.args['preferences']['toUploadPath'])
+        files_to_upload = self.filemanager.get_local_files(self.args['preferences']['toUploadPath'])
 
-        self.filemanager.build_structure(self.args['preferences']['siteName'], self.args['filename'])
+        self.filemanager.build_remote_structure(self.args['preferences']['siteName'], self.args['filename'])
         
         for csv_source_file in files_to_upload:
                                 
