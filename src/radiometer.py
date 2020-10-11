@@ -50,7 +50,7 @@ class Radiometer:
         self.upload_data = False 
 
         # Should we get a GPS postion
-        self.get_gps_position = True
+        self.get_gps_position = False
         
         # How many samples should be taken before the sample upload is done
         self.sample_size = 120
@@ -310,9 +310,8 @@ class Radiometer:
         self.filemanager.build_structure(self.args['preferences']['siteName'], self.args['filename'])
         
         for csv_source_file in files_to_upload:
-            print("\n>> Zipping {}".format(csv_source_file))
-
-            full_source_path = self.zip_file(
+                                
+            full_source_path = os.path.join(
                                     self.args['preferences']['toUploadPath'],
                                     csv_source_file
                                 )
@@ -321,7 +320,7 @@ class Radiometer:
                 full_destination_path = os.path.join(
                                             self.args['preferences']['protocol']['ssh']['remoteDestinationPath'],
                                             self.args['preferences']['siteName'],
-                                            "sample_test.zip"
+                                            "sample_test.csv"#"sample_test.zip"
                                         )
                 
                 print("\n     --- Uploading SAMPLE_TEST.ZIP to server ---\n")
@@ -355,7 +354,7 @@ class Radiometer:
                 else:
                     self.filemanager.delete_file(os.path.join(
                             self.args['preferences']['toUploadPath'],
-                            "sample_test.zip"
+                            "sample_test.csv"#"sample_test.zip"
                         )
                     )
             except:                
@@ -363,28 +362,6 @@ class Radiometer:
                 
                 print("\n   !!! An Exception Occurred During Local File Move !!!")
                 print("{}".format(e))
-
-
-    def zip_file(self, csv_source_path, filename):
-        
-        filename_no_extension = filename[:filename.find('.')]
-        zipped_filename = filename_no_extension + '.zip'
-        
-        full_zipped_path = os.path.join(csv_source_path, zipped_filename)
-        
-        zipped_file = zipfile.ZipFile(full_zipped_path, 'w')
-        zipped_file.write(
-            os.path.join(
-                csv_source_path,
-                filename
-            ),
-            compress_type = zipfile.ZIP_DEFLATED
-        )
-        zipped_file.close()
-        
-        self.filemanager.delete_file(os.path.join(csv_source_path, filename))
-        
-        return full_zipped_path
 
 
     def set_clock(self):
