@@ -35,29 +35,29 @@ DEGREE_SIGN = u'\N{DEGREE SIGN}'
 class Radiometer:
 
     def __init__(self, sim7600, filemanager, args):
-        
+
         self.sim7600 = sim7600
         self.filemanager = filemanager
         self.args = args
-        
+
         # Is this the first time the script is running after power cycle
         self.initial_startup = True
-        
+
         # There will be a cron.log file which needs to be deleted IF the cron ran successfully
         self.delete_cron_log = True
-        
+
         # Should data be uploaded
         self.upload_data = False 
 
         # Should we get a GPS postion
         self.get_gps_position = True 
-        
+
         # How many samples should be taken before the sample upload is done
         self.sample_size = 120
-        
+
         # Check if required local directories exist, and if they don't creat them
         self.filemanager.check_directory_requirements()
-        
+
         # Save the current time
         self.current_time = time.time()
         self.previous_time = self.current_time
@@ -195,7 +195,7 @@ class Radiometer:
         self.upload_data = True
         self.initial_startup = True
         
-        print("Copying {} to {} directory".format(
+        print("Copying {} to {}".format(
                 os.path.join(self.args['preferences']['savePath'],self.args['filename']),
                 os.path.join(self.args['preferences']['toUploadPath'], "sample_test.csv")
             )
@@ -346,7 +346,7 @@ class Radiometer:
                 self.filemanager.upload_to_server(full_source_path, full_destination_path)
                 print("{} uploaded successfully".format(csv_source_file))
                 
-            except:                
+            except:
                 e = sys.exc_info()[0]
                 
                 print("\n   !!! An Exception Occurred During Remote Transfer !!!")
@@ -363,7 +363,7 @@ class Radiometer:
                             "sample_test.csv"#"sample_test.zip"
                         )
                     )
-            except:                
+            except:
                 e = sys.exc_info()[0]
                 
                 print("\n   !!! An Exception Occurred During Local File Move !!!")
@@ -372,10 +372,7 @@ class Radiometer:
 
     def set_clock(self):
         
-        stream = os.popen('timedatectl')
-        print(stream.read())
-        
-        datetime_now = datetime.now(timezone.utc)
+        print(self.sim7600.update_utc_time())
         
         self.args['date'] = {
             'today_local' : datetime.now(),
@@ -394,6 +391,8 @@ class Radiometer:
         self.args['filename'] += str(datetime.now(timezone.utc).strftime('%m'))
         self.args['filename'] += str(datetime.now(timezone.utc).strftime('%d'))
         self.args['filename'] += ".csv"
+
+        print("Writing to {}".format(self.args['filename']))
         
     
     def build_heading(self):
@@ -429,16 +428,16 @@ class Radiometer:
     def write_coordinate_string(self):
         
         # Build the coordinate string_at
-        coordinate_string = 'Latitude : {}{}'.format(self.args['coordinates']['latitude']['degrees'], DEGREE_SIGN)
-        coordinate_string += '{}\''.format(self.args['coordinates']['latitude']['minutes'])
-        coordinate_string += '{:.3f}"'.format(self.args['coordinates']['latitude']['seconds'])
+        coordinate_string = 'Latitude : {}{}'.format(int(self.args['coordinates']['latitude']['degrees']), DEGREE_SIGN)
+        coordinate_string += '{}\''.format(int(self.args['coordinates']['latitude']['minutes']))
+        coordinate_string += '{:.3f}"'.format(float(self.args['coordinates']['latitude']['seconds']))
         coordinate_string += ' {}'.format(self.args['coordinates']['latitude']['direction'])
         
         coordinate_string += '      '
         
-        coordinate_string += 'Longitude : {}{}'.format(self.args['coordinates']['longitude']['degrees'], DEGREE_SIGN)
-        coordinate_string += '{}\''.format(self.args['coordinates']['longitude']['minutes'])
-        coordinate_string += '{:.3f}"'.format(self.args['coordinates']['longitude']['seconds'])
+        coordinate_string += 'Longitude : {}{}'.format(int(self.args['coordinates']['longitude']['degrees']), DEGREE_SIGN)
+        coordinate_string += '{}\''.format(int(self.args['coordinates']['longitude']['minutes']))
+        coordinate_string += '{:.3f}"'.format(float(self.args['coordinates']['longitude']['seconds']))
         coordinate_string += ' {}\n'.format(self.args['coordinates']['longitude']['direction'])
         
         print(coordinate_string, end = '')
