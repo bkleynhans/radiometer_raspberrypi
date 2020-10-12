@@ -33,7 +33,10 @@ class Sim7600():
         # Set the debug variable to true to print additional debugging information
         self.debug = False
         
-        self.args = args;
+        self.args = args
+
+        # How many times should the GPS try to triangulate before using default values
+        self.gps_retries = 100
         
         # The defined dictionary contains a set of predefined strings
         # that are used for interface with the sim7600 module.  These strings
@@ -209,6 +212,17 @@ class Sim7600():
         stdout, stderr = self._shell_process(command_string)
         
 
+    # Update the UTC time on the device
+    def update_utc_time(self):
+        
+        self._print_debug_info()
+        
+        command_string = "sudo timedatectl"
+        stdout, stderr = self._shell_process(command_string)
+        
+        return stdout
+    
+    
     # Manually reset the GSM radio
     def reset_gsm_radio(self):
         
@@ -431,7 +445,7 @@ class Sim7600():
         default_counter = 0
         
         while receive_null:
-            if default_counter < 100:
+            if default_counter < self.gps_retries:
                 default_counter += 1
                 time.sleep(2)
                 print("Attempt : {}".format(default_counter))
