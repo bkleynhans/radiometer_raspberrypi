@@ -216,6 +216,10 @@ class Sim7600():
     def update_utc_time(self):
         
         self._print_debug_info()
+
+        # It can take a long time for the server to connect to an NTP server
+        # therefore we are adding a 1 minute sleep timer
+        time.sleep(60)
         
         command_string = "sudo timedatectl"
         stdout, stderr = self._shell_process(command_string)
