@@ -50,7 +50,7 @@ You can change the order of the headings **highlighted in red** in the *headingS
 Because the units will be deployed in the field, without being connected to a screen or keyboard, we need to configure it to launch the program on boot.  In order to launch the program at boot time, we need to add a line to the *crontab*.
 
 ```
-sudo crontab -e
+crontab -e
 ```
 
 The following line instructs *cron* to launch the program at boot time and create a log file of the program launch process in the pi home directory.  If this is a fresh installation, add it at the bottom of the opened file.  If you are using the supplied ISO file (only available in the private repository), simply uncomment it.
